@@ -35,7 +35,7 @@ data class Transaction(
     val amount: Double,
 
     @ColumnInfo(name = "type")
-    val type: String, // "income", "expense", "transfer"
+    val type: String,
 
     @ColumnInfo(name = "category_id")
     val categoryId: Int?,

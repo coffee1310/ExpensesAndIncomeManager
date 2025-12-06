@@ -1,10 +1,45 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="purple_200">#FFBB86FC</color>
-    <color name="purple_500">#FF6200EE</color>
-    <color name="purple_700">#FF3700B3</color>
-    <color name="teal_200">#FF03DAC5</color>
-    <color name="teal_700">#FF018786</color>
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
+    <!-- Primary colors -->
+    <color name="primary">#6A11CB</color>
+    <color name="primary_dark">#2575FC</color>
+
+    <!-- Primary gradient colors -->
+    <color name="primary_start">#6A11CB</color>
+    <color name="primary_end">#2575FC</color>
+
+    <!-- Accent colors -->
+    <color name="accent_start">#FF8A00</color>
+    <color name="accent_end">#FFE53B</color>
+
+    <!-- Surface colors -->
+    <color name="surface">#FFFFFF</color>
+    <color name="background">#F8F9FA</color>
+
+    <!-- Text colors -->
+    <color name="on_surface">#1F2937</color>
+    <color name="on_surface_variant">#6B7280</color>
+    <color name="on_primary">#FFFFFF</color>
+
+    <!-- Utility colors -->
+    <color name="outline">#D1D5DB</color>
+    <color name="error">#EF4444</color>
+    <color name="success">#10B981</color>
+    <color name="warning">#F59E0B</color>
+
+    <!-- Card colors -->
+    <color name="card_background">#FFFFFF</color>
+    <color name="card_stroke">#E5E7EB</color>
+
+    <!-- Navigation colors -->
+    <color name="nav_icon_default">#9CA3AF</color>
+    <color name="nav_text_default">#6B7280</color>
+
+    <!-- Expense category colors -->
+    <color name="category_food">#FF6B6B</color>
+    <color name="category_transport">#5856D6</color>
+    <color name="category_entertainment">#FFD166</color>
+    <color name="category_cafe">#06D6A0</color>
+    <color name="category_utilities">#118AB2</color>
+    <color name="category_other">#9B5DE5</color>
 </resources>
