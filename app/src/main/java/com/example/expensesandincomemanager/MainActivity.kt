@@ -3,6 +3,7 @@ package com.example.expensesandincomemanager
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import com.example.expensesandincomemanager.ui.screens.home.HomeFragment
+import data.initial.InitialData
 
 class MainActivity : AppCompatActivity() {
 
@@ -11,6 +12,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         setupNavigation()
+        InitialData.insertInitialData(this)
 
         if (savedInstanceState == null) {
             supportFragmentManager.beginTransaction()
