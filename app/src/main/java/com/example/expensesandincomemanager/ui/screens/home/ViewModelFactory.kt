@@ -9,8 +9,10 @@ class HomeViewModelFactory(private val context: Context) : ViewModelProvider.Fac
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(HomeViewModel::class.java)) {
+            // Получаем repository из провайдера
             val repository = FinanceRepositoryProvider.getRepository(context)
-            return HomeViewModel(repository) as T
+            // Передаем ОБА параметра: repository и context
+            return HomeViewModel(repository, context) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

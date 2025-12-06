@@ -1,8 +1,12 @@
 package data.repository
 
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.LiveData
 import data.dao.*
 import data.database.FinanceDatabase
 import data.entities.*
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import java.util.*
 
@@ -13,12 +17,40 @@ class FinanceRepository(
     private val budgetDao: BudgetDao
 ) {
 
+    // CoroutineScope для обновлений LiveData
+    private val coroutineScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+
+    // MutableLiveData для уведомления об изменениях (private)
+    private val _transactionsUpdated = MutableLiveData<Boolean>(false)
+
+    // Public LiveData для наблюдения
+    val transactionsUpdated: LiveData<Boolean> = _transactionsUpdated
+
+    // Функция для уведомления об обновлениях
+    fun notifyTransactionsUpdated() {
+        coroutineScope.launch {
+            _transactionsUpdated.value = true
+        }
+    }
+
+    // Функция для сброса флага
+    fun resetTransactionsUpdated() {
+        coroutineScope.launch {
+            _transactionsUpdated.value = false
+        }
+    }
+
     // Категории
     suspend fun insertCategory(category: Category) = categoryDao.insert(category)
     fun getCategoriesByType(type: String) = categoryDao.getCategoriesByType(type)
 
     // Транзакции
-    suspend fun insertTransaction(transaction: Transaction) = transactionDao.insert(transaction)
+    suspend fun insertTransaction(transaction: Transaction): Long {
+        val id = transactionDao.insert(transaction)
+        notifyTransactionsUpdated() // Уведомляем об изменении
+        return id
+    }
+
     fun getTransactionsByDateRange(startDate: Date, endDate: Date) =
         transactionDao.getTransactionsByDateRange(startDate, endDate)
 
@@ -39,12 +71,12 @@ class FinanceRepository(
         calendar.add(Calendar.DAY_OF_MONTH, -1)
         val endDate = calendar.time
 
-        val expenseSummary = transactionDao.getExpenseSummaryByCategory(startDate, endDate)
-        val typeTotals = transactionDao.getIncomeExpenseTotal(startDate, endDate)
+        // Получаем Flow и преобразуем в списки
+        val expenseSummaryFlow = getExpenseSummaryByCategory(startDate, endDate)
+        val typeTotalsFlow = getIncomeExpenseTotal(startDate, endDate)
 
-        // Преобразуем Flow в списки
-        val expenseList = expenseSummary.first()
-        val totalList = typeTotals.first()
+        val expenseList = expenseSummaryFlow.first()
+        val totalList = typeTotalsFlow.first()
 
         val incomeTotal = totalList.find { it.type == Transaction.TYPE_INCOME }?.total_amount ?: 0.0
         val expenseTotal = totalList.find { it.type == Transaction.TYPE_EXPENSE }?.total_amount ?: 0.0
@@ -58,6 +90,17 @@ class FinanceRepository(
             startDate = startDate,
             endDate = endDate
         )
+    }
+
+    // Счета
+    suspend fun updateAccountBalance(id: Int, amount: Double) {
+        accountDao.updateBalance(id, amount)
+        notifyTransactionsUpdated() // Уведомляем об изменении
+    }
+
+    // Отмена всех корутин при уничтожении
+    fun cleanup() {
+        coroutineScope.coroutineContext.cancelChildren()
     }
 
     data class HomeData(
@@ -84,5 +127,11 @@ object FinanceRepositoryProvider {
                 budgetDao = database.budgetDao()
             ).also { repository = it }
         }
+    }
+
+    // Очистка репозитория
+    fun cleanup() {
+        repository?.cleanup()
+        repository = null
     }
 }

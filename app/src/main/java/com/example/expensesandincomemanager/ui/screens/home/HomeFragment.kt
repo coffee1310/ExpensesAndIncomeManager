@@ -25,9 +25,9 @@ class HomeFragment : Fragment() {
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View {
+    ): View? {
         rootView = inflater.inflate(R.layout.home_screen, container, false)
-        return rootView!!
+        return rootView
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -40,6 +40,14 @@ class HomeFragment : Fragment() {
 
         setupChartTypeSelector()
         setupObservers()
+
+        // Наблюдаем за обновлениями транзакций
+        viewModel.transactionsUpdated.observe(viewLifecycleOwner) { updated ->
+            if (updated) {
+                // Принудительно обновляем данные
+                viewModel.refreshData()
+            }
+        }
     }
 
     private fun setupChartTypeSelector() {

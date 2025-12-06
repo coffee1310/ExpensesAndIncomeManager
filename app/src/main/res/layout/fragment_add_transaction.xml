@@ -69,7 +69,7 @@
                         <ImageView
                             android:layout_width="32dp"
                             android:layout_height="32dp"
-                            android:src="@drawable/ic_income"
+                            android:src="@drawable/ic_arrow_up"
                             android:tint="@color/success"
                             android:layout_marginBottom="4dp" />
 
@@ -107,7 +107,7 @@
                         <ImageView
                             android:layout_width="32dp"
                             android:layout_height="32dp"
-                            android:src="@drawable/ic_expense"
+                            android:src="@drawable/ic_arrow_down"
                             android:tint="@color/error"
                             android:layout_marginBottom="4dp" />
 
@@ -129,7 +129,6 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:hint="Сумма"
-                app:startIconDrawable="@drawable/ic_currency_rub"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                 android:layout_marginBottom="16dp">
 
@@ -148,7 +147,6 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:hint="Категория"
-                app:startIconDrawable="@drawable/ic_category"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                 android:layout_marginBottom="16dp">
 
@@ -168,7 +166,6 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:hint="Счет"
-                app:startIconDrawable="@drawable/ic_account"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                 android:layout_marginBottom="16dp">
 
@@ -188,7 +185,6 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:hint="Дата"
-                app:startIconDrawable="@drawable/ic_calendar"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                 android:layout_marginBottom="16dp">
 

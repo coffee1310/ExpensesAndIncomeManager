@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main_nav_graph"
+    app:startDestination="@id/homeFragment">
+
+    <!-- Главный экран -->
+    <fragment
+        android:id="@+id/homeFragment"
+        android:name="com.example.expensesandincomemanager.ui.screens.home.HomeFragment"
+        android:label="Главная"
+        tools:layout="@layout/home_screen" />
+
+    <!-- Экран добавления транзакции -->
+    <fragment
+        android:id="@+id/addTransactionFragment"
+        android:name="com.example.expensesandincomemanager.ui.screens.addtransaction.AddTransactionFragment"
+        android:label="Новая транзакция"
+        tools:layout="@layout/fragment_add_transaction" />
+
+    <!-- Экран операций (пока заглушка) -->
+    <fragment
+        android:id="@+id/transactionsFragment"
+        android:name="com.example.expensesandincomemanager.ui.screens.transactions.TransactionsFragment"
+        android:label="Операции"
+        tools:layout="@layout/fragment_transactions" />
+
+    <!-- Экран планирования (пока заглушка) -->
+    <fragment
+        android:id="@+id/planFragment"
+        android:name="com.example.expensesandincomemanager.ui.screens.plan.PlanFragment"
+        android:label="План"
+        tools:layout="@layout/fragment_plan" />
+
+    <!-- Экран настроек (пока заглушка) -->
+    <fragment
+        android:id="@+id/settingsFragment"
+        android:name="com.example.expensesandincomemanager.ui.screens.settings.SettingsFragment"
+        android:label="Настройки"
+        tools:layout="@layout/fragment_settings" />
+
+</navigation>

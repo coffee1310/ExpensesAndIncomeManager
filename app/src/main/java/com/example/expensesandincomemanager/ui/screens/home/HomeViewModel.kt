@@ -1,8 +1,9 @@
 package com.example.expensesandincomemanager.ui.screens.home
 
+import androidx.lifecycle.LiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.asFlow
 import androidx.lifecycle.viewModelScope
-import data.entities.Category
 import data.repository.FinanceRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -11,7 +12,8 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 class HomeViewModel(
-    private val repository: FinanceRepository
+    private val repository: FinanceRepository,
+    private val context: android.content.Context
 ) : ViewModel() {
 
     private val _monthlyData = MutableStateFlow<List<MonthData>>(emptyList())
@@ -32,17 +34,37 @@ class HomeViewModel(
     private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading
 
+    // LiveData для наблюдения за обновлениями
+    val transactionsUpdated: LiveData<Boolean> = repository.transactionsUpdated
+
     private var selectedYear = Calendar.getInstance().get(Calendar.YEAR)
     private var selectedMonth = Calendar.getInstance().get(Calendar.MONTH) + 1
 
     init {
         loadInitialData()
         loadCurrentMonthData()
+
+        // Подписываемся на обновления транзакций
+        viewModelScope.launch {
+            transactionsUpdated.asFlow().collect { updated ->
+                if (updated) {
+                    // При изменении транзакций перезагружаем данные
+                    loadCurrentMonthData()
+                    // Сбрасываем флаг через репозиторий
+                    repository.resetTransactionsUpdated()
+                }
+            }
+        }
     }
 
     fun loadDataForMonth(year: Int, month: Int) {
         selectedYear = year
         selectedMonth = month
+        loadCurrentMonthData()
+    }
+
+    // Функция для принудительного обновления данных
+    fun refreshData() {
         loadCurrentMonthData()
     }
 
@@ -90,7 +112,6 @@ class HomeViewModel(
 
             } catch (e: Exception) {
                 e.printStackTrace()
-                // В случае ошибки показываем тестовые данные
                 showSampleData()
             } finally {
                 _isLoading.value = false
@@ -106,27 +127,57 @@ class HomeViewModel(
             return emptyList()
         }
 
-        val colors = listOf(
-            android.graphics.Color.parseColor("#FF6B6B"),
-            android.graphics.Color.parseColor("#5856D6"),
-            android.graphics.Color.parseColor("#FFD166"),
-            android.graphics.Color.parseColor("#06D6A0"),
-            android.graphics.Color.parseColor("#118AB2"),
-            android.graphics.Color.parseColor("#9B5DE5")
-        )
+        viewModelScope.launch {
+            try {
+                // Загружаем реальные категории из базы
+                val database = data.database.FinanceDatabase.getDatabase(context)
+                val allCategories = database.categoryDao().getAllCategories()
 
-        return expenseSummary.mapIndexed { index, summary ->
-            val percentage = ((summary.total_amount / totalExpense) * 100).toFloat()
-            val color = colors.getOrElse(index) { android.graphics.Color.GRAY }
+                val colors = listOf(
+                    android.graphics.Color.parseColor("#FF6B6B"),
+                    android.graphics.Color.parseColor("#5856D6"),
+                    android.graphics.Color.parseColor("#FFD166"),
+                    android.graphics.Color.parseColor("#06D6A0"),
+                    android.graphics.Color.parseColor("#118AB2"),
+                    android.graphics.Color.parseColor("#9B5DE5")
+                )
 
-            ExpenseCategoryUI(
-                id = summary.category_id ?: 0,
-                name = "Категория ${index + 1}", // TODO: Получить реальное название категории
-                amount = summary.total_amount,
-                percentage = percentage,
-                color = color
-            )
+                val result = expenseSummary.mapIndexed { index, summary ->
+                    val category = allCategories.find { it.id == summary.category_id }
+                    val categoryName = category?.name ?: "Категория ${index + 1}"
+                    val categoryColor = if (category != null && category.color.isNotBlank()) {
+                        try {
+                            android.graphics.Color.parseColor(category.color)
+                        } catch (e: Exception) {
+                            colors.getOrElse(index) { android.graphics.Color.GRAY }
+                        }
+                    } else {
+                        colors.getOrElse(index) { android.graphics.Color.GRAY }
+                    }
+
+                    val percentage = if (totalExpense > 0) {
+                        ((summary.total_amount / totalExpense) * 100).toFloat()
+                    } else {
+                        0f
+                    }
+
+                    ExpenseCategoryUI(
+                        id = summary.category_id ?: 0,
+                        name = categoryName,
+                        amount = summary.total_amount,
+                        percentage = percentage,
+                        color = categoryColor
+                    )
+                }
+
+                _expenseCategories.value = result
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
+
+        // Временно возвращаем пустой список, реальные данные придут через Flow
+        return emptyList()
     }
 
     private fun showSampleData() {
