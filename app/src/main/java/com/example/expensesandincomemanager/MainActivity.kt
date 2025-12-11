@@ -2,8 +2,9 @@ package com.example.expensesandincomemanager
 
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
-import com.example.expensesandincomemanager.ui.screens.home.AddTransactionFragment
 import com.example.expensesandincomemanager.ui.screens.home.HomeFragment
+import com.example.expensesandincomemanager.ui.screens.transactions.AddTransactionFragment
+import com.example.expensesandincomemanager.ui.screens.transactions.TransactionsFragment
 import data.initial.InitialData
 
 class MainActivity : AppCompatActivity() {
@@ -12,10 +13,9 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // Вставляем начальные данные
+        setupNavigation()
         InitialData.insertInitialData(this)
 
-        // Проверяем, не восстанавливаем ли мы состояние
         if (savedInstanceState == null) {
             // Загружаем HomeFragment как начальный экран
             supportFragmentManager.beginTransaction()
@@ -24,20 +24,13 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    override fun onStart() {
-        super.onStart()
-        setupNavigation()
-    }
-
     private fun setupNavigation() {
         // Навигация через нижнее меню
         findViewById<android.view.View>(R.id.btn_transactions)?.setOnClickListener {
-            // TODO: Реализовать переход к операциям
-            showToast("Операции - в разработке")
+            navigateToTransactions()
         }
 
         findViewById<android.view.View>(R.id.btn_report)?.setOnClickListener {
-            // Возвращаемся на главную
             navigateToHome()
         }
 
@@ -47,17 +40,24 @@ class MainActivity : AppCompatActivity() {
         }
 
         findViewById<android.view.View>(R.id.btn_plan)?.setOnClickListener {
-            showToast("Планирование - в разработке")
+            showComingSoon("Планирование")
         }
 
         findViewById<android.view.View>(R.id.btn_settings)?.setOnClickListener {
-            showToast("Настройки - в разработке")
+            showComingSoon("Настройки")
         }
     }
 
     private fun navigateToHome() {
         supportFragmentManager.beginTransaction()
             .replace(R.id.container, HomeFragment())
+            .addToBackStack(null)
+            .commit()
+    }
+
+    private fun navigateToTransactions() {
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.container, TransactionsFragment())
             .addToBackStack(null)
             .commit()
     }
@@ -69,7 +69,11 @@ class MainActivity : AppCompatActivity() {
             .commit()
     }
 
-    private fun showToast(message: String) {
-        android.widget.Toast.makeText(this, message, android.widget.Toast.LENGTH_SHORT).show()
+    private fun showComingSoon(featureName: String) {
+        android.widget.Toast.makeText(
+            this,
+            "$featureName - в разработке",
+            android.widget.Toast.LENGTH_SHORT
+        ).show()
     }
 }

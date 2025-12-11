@@ -59,6 +59,12 @@ interface TransactionDao {
         endDate: Date
     ): Flow<List<CategoryExpenseSummary>>
 
+    @Query("SELECT * FROM transactions ORDER BY date DESC, time DESC")
+    suspend fun getAllTransactions(): List<Transaction>
+
+    @Query("SELECT COUNT(*) FROM transactions")
+    suspend fun getTransactionCount(): Int
+
     @Query("""
         SELECT 
             type,
