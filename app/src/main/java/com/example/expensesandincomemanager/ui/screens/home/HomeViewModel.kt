@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import data.repository.FinanceRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -31,7 +32,7 @@ class HomeViewModel(
     private val _balance = MutableStateFlow(0.0)
     val balance: StateFlow<Double> = _balance
 
-    private val _isLoading = MutableStateFlow(true)
+    private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 
     // LiveData для наблюдения за обновлениями
@@ -41,16 +42,16 @@ class HomeViewModel(
     private var selectedMonth = Calendar.getInstance().get(Calendar.MONTH) + 1
 
     init {
+        println("DEBUG ViewModel: Инициализация ViewModel")
         loadInitialData()
-        loadCurrentMonthData()
 
         // Подписываемся на обновления транзакций
         viewModelScope.launch {
             transactionsUpdated.asFlow().collect { updated ->
                 if (updated) {
-                    // При изменении транзакций перезагружаем данные
-                    loadCurrentMonthData()
-                    // Сбрасываем флаг через репозиторий
+                    println("DEBUG ViewModel: Получено уведомление об обновлении транзакций!")
+                    // Загружаем данные немедленно
+                    loadCurrentMonthData(force = true)
                     repository.resetTransactionsUpdated()
                 }
             }
@@ -58,60 +59,83 @@ class HomeViewModel(
     }
 
     fun loadDataForMonth(year: Int, month: Int) {
+        println("DEBUG ViewModel: Загрузка данных для месяца $month/$year")
         selectedYear = year
         selectedMonth = month
-        loadCurrentMonthData()
+        loadCurrentMonthData(force = true)
     }
 
-    // Функция для принудительного обновления данных
+    // Функция для принудительного обновления всех данных
     fun refreshData() {
-        loadCurrentMonthData()
+        println("DEBUG ViewModel: Принудительное обновление данных")
+        loadMonthlyData()
+        loadCurrentMonthData(force = true)
     }
 
     private fun loadInitialData() {
-        val calendar = Calendar.getInstance()
-        val currentYear = calendar.get(Calendar.YEAR)
-        val currentMonth = calendar.get(Calendar.MONTH) + 1
-
-        val months = mutableListOf<MonthData>()
-        val monthFormat = SimpleDateFormat("MMM", Locale.getDefault())
-
-        // Генерируем данные за последние 6 месяцев
-        for (i in 5 downTo 0) {
-            calendar.add(Calendar.MONTH, -1)
-            val month = calendar.get(Calendar.MONTH) + 1
-            val year = calendar.get(Calendar.YEAR)
-
-            months.add(
-                MonthData(
-                    monthName = monthFormat.format(calendar.time).replaceFirstChar { it.uppercase() },
-                    monthNumber = month,
-                    year = year,
-                    isSelected = month == currentMonth && year == currentYear
-                )
-            )
-        }
-
-        months.reverse()
-        _monthlyData.value = months
+        println("DEBUG ViewModel: Загрузка начальных данных")
+        loadMonthlyData()
+        loadCurrentMonthData(force = false)
     }
 
-    private fun loadCurrentMonthData() {
+    private fun loadMonthlyData() {
         viewModelScope.launch {
             _isLoading.value = true
             try {
+                val calendar = Calendar.getInstance()
+                val currentYear = calendar.get(Calendar.YEAR)
+                val currentMonth = calendar.get(Calendar.MONTH) + 1
+
+                val months = mutableListOf<MonthData>()
+                val monthFormat = SimpleDateFormat("MMM", Locale.getDefault())
+
+                for (i in 5 downTo 0) {
+                    calendar.add(Calendar.MONTH, -1)
+                    val month = calendar.get(Calendar.MONTH) + 1
+                    val year = calendar.get(Calendar.YEAR)
+
+                    months.add(
+                        MonthData(
+                            monthName = monthFormat.format(calendar.time).replaceFirstChar { it.uppercase() },
+                            monthNumber = month,
+                            year = year,
+                            isSelected = month == currentMonth && year == currentYear
+                        )
+                    )
+                }
+
+                months.reverse()
+                _monthlyData.value = months
+                println("DEBUG ViewModel: Месячные данные загружены: ${months.size} месяцев")
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    private fun loadCurrentMonthData(force: Boolean = false) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                println("DEBUG ViewModel: Загрузка данных за $selectedMonth/$selectedYear")
+
                 val homeData = repository.getHomeData(selectedYear, selectedMonth)
 
+                println("DEBUG ViewModel: Данные получены: доходы=${homeData.incomeTotal}, расходы=${homeData.expenseTotal}, баланс=${homeData.balance}")
+
+                // Обновляем ВСЕ значения одновременно
                 _totalIncome.value = homeData.incomeTotal
                 _totalExpense.value = homeData.expenseTotal
                 _balance.value = homeData.balance
 
-                // Преобразуем данные для UI
-                val categories = convertToUICategories(homeData.expenseByCategory, homeData.expenseTotal)
-                _expenseCategories.value = categories
+                // Загружаем категории
+                loadExpenseCategories(homeData)
+
+                println("DEBUG ViewModel: Данные успешно обновлены в UI")
 
             } catch (e: Exception) {
                 e.printStackTrace()
+                println("DEBUG ViewModel: Ошибка при загрузке данных: ${e.message}")
                 showSampleData()
             } finally {
                 _isLoading.value = false
@@ -119,116 +143,63 @@ class HomeViewModel(
         }
     }
 
-    private fun convertToUICategories(
-        expenseSummary: List<data.dao.TransactionDao.CategoryExpenseSummary>,
-        totalExpense: Double
-    ): List<ExpenseCategoryUI> {
-        if (expenseSummary.isEmpty() || totalExpense == 0.0) {
-            return emptyList()
-        }
+    private suspend fun loadExpenseCategories(homeData: data.repository.FinanceRepository.HomeData) {
+        try {
+            val database = data.database.FinanceDatabase.getDatabase(context)
+            val allCategories = database.categoryDao().getAllCategories()
 
-        viewModelScope.launch {
-            try {
-                // Загружаем реальные категории из базы
-                val database = data.database.FinanceDatabase.getDatabase(context)
-                val allCategories = database.categoryDao().getAllCategories()
+            val colors = listOf(
+                android.graphics.Color.parseColor("#FF6B6B"),
+                android.graphics.Color.parseColor("#5856D6"),
+                android.graphics.Color.parseColor("#FFD166"),
+                android.graphics.Color.parseColor("#06D6A0"),
+                android.graphics.Color.parseColor("#118AB2"),
+                android.graphics.Color.parseColor("#9B5DE5")
+            )
 
-                val colors = listOf(
-                    android.graphics.Color.parseColor("#FF6B6B"),
-                    android.graphics.Color.parseColor("#5856D6"),
-                    android.graphics.Color.parseColor("#FFD166"),
-                    android.graphics.Color.parseColor("#06D6A0"),
-                    android.graphics.Color.parseColor("#118AB2"),
-                    android.graphics.Color.parseColor("#9B5DE5")
-                )
-
-                val result = expenseSummary.mapIndexed { index, summary ->
-                    val category = allCategories.find { it.id == summary.category_id }
-                    val categoryName = category?.name ?: "Категория ${index + 1}"
-                    val categoryColor = if (category != null && category.color.isNotBlank()) {
-                        try {
-                            android.graphics.Color.parseColor(category.color)
-                        } catch (e: Exception) {
-                            colors.getOrElse(index) { android.graphics.Color.GRAY }
-                        }
-                    } else {
+            val categories = homeData.expenseByCategory.mapIndexed { index, summary ->
+                val category = allCategories.find { it.id == summary.category_id }
+                val categoryName = category?.name ?: "Категория ${index + 1}"
+                val categoryColor = if (category != null && category.color.isNotBlank()) {
+                    try {
+                        android.graphics.Color.parseColor(category.color)
+                    } catch (e: Exception) {
                         colors.getOrElse(index) { android.graphics.Color.GRAY }
                     }
-
-                    val percentage = if (totalExpense > 0) {
-                        ((summary.total_amount / totalExpense) * 100).toFloat()
-                    } else {
-                        0f
-                    }
-
-                    ExpenseCategoryUI(
-                        id = summary.category_id ?: 0,
-                        name = categoryName,
-                        amount = summary.total_amount,
-                        percentage = percentage,
-                        color = categoryColor
-                    )
+                } else {
+                    colors.getOrElse(index) { android.graphics.Color.GRAY }
                 }
 
-                _expenseCategories.value = result
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
+                val percentage = if (homeData.expenseTotal > 0) {
+                    ((summary.total_amount / homeData.expenseTotal) * 100).toFloat()
+                } else {
+                    0f
+                }
 
-        // Временно возвращаем пустой список, реальные данные придут через Flow
-        return emptyList()
+                ExpenseCategoryUI(
+                    id = summary.category_id ?: 0,
+                    name = categoryName,
+                    amount = summary.total_amount,
+                    percentage = percentage,
+                    color = categoryColor
+                )
+            }
+
+            _expenseCategories.value = categories
+            println("DEBUG ViewModel: Категории загружены: ${categories.size} шт.")
+        } catch (e: Exception) {
+            println("DEBUG ViewModel: Ошибка при загрузке категорий: ${e.message}")
+            _expenseCategories.value = emptyList()
+        }
     }
 
     private fun showSampleData() {
-        _totalIncome.value = 80000.0
-        _totalExpense.value = 50000.0
-        _balance.value = 30000.0
+        println("DEBUG ViewModel: Показываем тестовые данные")
+        _totalIncome.value = 0.0
+        _totalExpense.value = 0.0
+        _balance.value = 0.0
 
-        _expenseCategories.value = listOf(
-            ExpenseCategoryUI(
-                id = 1,
-                name = "Продукты",
-                amount = 15000.0,
-                percentage = 30f,
-                color = android.graphics.Color.parseColor("#FF6B6B")
-            ),
-            ExpenseCategoryUI(
-                id = 2,
-                name = "Транспорт",
-                amount = 8000.0,
-                percentage = 16f,
-                color = android.graphics.Color.parseColor("#5856D6")
-            ),
-            ExpenseCategoryUI(
-                id = 3,
-                name = "Развлечения",
-                amount = 7000.0,
-                percentage = 14f,
-                color = android.graphics.Color.parseColor("#FFD166")
-            ),
-            ExpenseCategoryUI(
-                id = 4,
-                name = "Кафе",
-                amount = 6000.0,
-                percentage = 12f,
-                color = android.graphics.Color.parseColor("#06D6A0")
-            ),
-            ExpenseCategoryUI(
-                id = 5,
-                name = "Коммуналка",
-                amount = 5000.0,
-                percentage = 10f,
-                color = android.graphics.Color.parseColor("#118AB2")
-            ),
-            ExpenseCategoryUI(
-                id = 6,
-                name = "Прочее",
-                amount = 9000.0,
-                percentage = 18f,
-                color = android.graphics.Color.parseColor("#9B5DE5")
-            )
-        )
+        _expenseCategories.value = emptyList()
     }
 
     data class MonthData(

@@ -12,6 +12,7 @@ import com.example.expensesandincomemanager.R
 import com.example.expensesandincomemanager.ui.components.DoughnutChartView
 import com.google.android.material.card.MaterialCardView
 import data.models.ExpenseCategory
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.*
@@ -20,6 +21,7 @@ class HomeFragment : Fragment() {
 
     private var rootView: View? = null
     private lateinit var viewModel: HomeViewModel
+    private var dataJob: kotlinx.coroutines.Job? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -39,15 +41,29 @@ class HomeFragment : Fragment() {
         ).get(HomeViewModel::class.java)
 
         setupChartTypeSelector()
-        setupObservers()
+        observeData()
 
         // Наблюдаем за обновлениями транзакций
         viewModel.transactionsUpdated.observe(viewLifecycleOwner) { updated ->
             if (updated) {
-                // Принудительно обновляем данные
                 viewModel.refreshData()
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        println("DEBUG HomeFragment: onResume() вызван")
+        // Принудительно обновляем данные
+        viewModel.refreshData()
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        // Отменяем все корутины при уничтожении вью
+        dataJob?.cancel()
+        dataJob = null
+        rootView = null
     }
 
     private fun setupChartTypeSelector() {
@@ -85,37 +101,83 @@ class HomeFragment : Fragment() {
         }
     }
 
-    private fun setupObservers() {
-        // Наблюдаем за месячными данными
-        lifecycleScope.launch {
-            viewModel.monthlyData.collect { months ->
-                months.let { updateMonthUI(it) }
-            }
-        }
+    private fun observeData() {
+        dataJob?.cancel()
 
-        // Наблюдаем за данными категорий
-        lifecycleScope.launch {
-            viewModel.expenseCategories.collect { categories ->
-                updatePieChart(categories)
-                updateCategoryLegend(categories)
-            }
-        }
+        dataJob = lifecycleScope.launch {
+            // Добавляем отладку
+            println("DEBUG HomeFragment: Начинаем наблюдение за данными")
 
-        // Наблюдаем за общими суммами
-        lifecycleScope.launch {
-            viewModel.totalExpense.collect { totalExpense ->
-                val totalIncome = viewModel.totalIncome.value
-                val balance = viewModel.balance.value
-                updateTotalAmounts(totalIncome, totalExpense, balance)
+            // Наблюдаем за месячными данными
+            launch {
+                viewModel.monthlyData.collectLatest { months ->
+                    println("DEBUG HomeFragment: месячные данные обновлены: ${months.size} месяцев")
+                    months?.let { updateMonthUI(it) }
+                }
             }
-        }
 
-        // Наблюдаем за состоянием загрузки
-        lifecycleScope.launch {
-            viewModel.isLoading.collect { isLoading ->
-                // TODO: Показать/скрыть индикатор загрузки
+            // Наблюдаем за данными категорий
+            launch {
+                viewModel.expenseCategories.collectLatest { categories ->
+                    println("DEBUG HomeFragment: категории обновлены: ${categories.size} категорий")
+                    categories?.let {
+                        updatePieChart(it)
+                        updateCategoryLegend(it)
+                    }
+                }
+            }
+
+            // Наблюдаем за общими суммами - ВАЖНО: нужно наблюдать за ВСЕМИ тремя значениями
+            launch {
+                viewModel.totalIncome.collectLatest { totalIncome ->
+                    println("DEBUG HomeFragment: totalIncome обновился: $totalIncome")
+                    val totalExpense = viewModel.totalExpense.value
+                    val balance = viewModel.balance.value
+                    println("DEBUG HomeFragment: Текущие значения - доходы: $totalIncome, расходы: $totalExpense, баланс: $balance")
+                    updateTotalAmounts(totalIncome, totalExpense, balance)
+                }
+            }
+
+            launch {
+                viewModel.totalExpense.collectLatest { totalExpense ->
+                    println("DEBUG HomeFragment: totalExpense обновился: $totalExpense")
+                    val totalIncome = viewModel.totalIncome.value
+                    val balance = viewModel.balance.value
+                    updateTotalAmounts(totalIncome, totalExpense, balance)
+                }
+            }
+
+            launch {
+                viewModel.balance.collectLatest { balance ->
+                    println("DEBUG HomeFragment: balance обновился: $balance")
+                    val totalIncome = viewModel.totalIncome.value
+                    val totalExpense = viewModel.totalExpense.value
+                    updateTotalAmounts(totalIncome, totalExpense, balance)
+                }
+            }
+
+            // Наблюдаем за состоянием загрузки
+            launch {
+                viewModel.isLoading.collectLatest { isLoading ->
+                    println("DEBUG HomeFragment: Состояние загрузки: $isLoading")
+                    if (isLoading) {
+                        showLoading()
+                    } else {
+                        hideLoading()
+                    }
+                }
             }
         }
+    }
+
+    private fun showLoading() {
+        // Показываем индикатор загрузки
+        rootView?.findViewById<View>(R.id.loading_indicator)?.visibility = View.VISIBLE
+    }
+
+    private fun hideLoading() {
+        // Скрываем индикатор загрузки
+        rootView?.findViewById<View>(R.id.loading_indicator)?.visibility = View.GONE
     }
 
     private fun updateMonthUI(months: List<HomeViewModel.MonthData>) {
@@ -150,11 +212,8 @@ class HomeFragment : Fragment() {
             }
 
             itemView.setOnClickListener {
-                lifecycleScope.launch {
-                    viewModel.loadDataForMonth(monthData.year, monthData.monthNumber)
-                    // И обновить выделение месяца локально
-                    updateMonthSelection(index)
-                }
+                viewModel.loadDataForMonth(monthData.year, monthData.monthNumber)
+                updateMonthSelection(index)
             }
 
             monthContainer?.addView(itemView)
@@ -188,7 +247,6 @@ class HomeFragment : Fragment() {
             }
         }
     }
-
 
     private fun updatePieChart(categories: List<HomeViewModel.ExpenseCategoryUI>) {
         val doughnutChart = rootView?.findViewById<DoughnutChartView>(R.id.doughnut_chart)
@@ -268,10 +326,5 @@ class HomeFragment : Fragment() {
         val formatter = NumberFormat.getCurrencyInstance(Locale("ru", "RU"))
         formatter.maximumFractionDigits = 0
         return formatter.format(amount)
-    }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        rootView = null
     }
 }

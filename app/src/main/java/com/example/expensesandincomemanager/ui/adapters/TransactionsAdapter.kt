@@ -1,5 +1,6 @@
 package com.example.expensesandincomemanager.ui.adapters
 
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -11,9 +12,13 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 
 class TransactionsAdapter(
-    private var transactions: List<Transaction>,
-    private val onItemClick: (Transaction) -> Unit
+    private var transactions: List<Transaction> = emptyList(), // Дефолтное значение
+    private val onItemClick: (Transaction) -> Unit = {} // Дефолтное значение
 ) : RecyclerView.Adapter<TransactionsAdapter.TransactionViewHolder>() {
+
+    init {
+        Log.d("TransactionsAdapter", "Adapter created with ${transactions.size} items")
+    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TransactionViewHolder {
         val view = LayoutInflater.from(parent.context)
@@ -32,6 +37,7 @@ class TransactionsAdapter(
     fun updateData(newTransactions: List<Transaction>) {
         transactions = newTransactions
         notifyDataSetChanged()
+        Log.d("TransactionsAdapter", "Data updated with ${newTransactions.size} items")
     }
 
     class TransactionViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {

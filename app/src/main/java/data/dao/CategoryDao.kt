@@ -28,6 +28,9 @@ interface CategoryDao {
     @Query("SELECT * FROM categories ORDER BY sort_order")
     suspend fun getAllCategories(): List<Category>
 
+    @Query("SELECT * FROM categories WHERE id = :id")
+    suspend fun getCategoryById(id: Int): Category?
+
     @Query("SELECT COUNT(*) FROM categories")
     suspend fun getCategoryCount(): Int
 }

@@ -25,7 +25,8 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         app:layout_behavior="@string/appbar_scrolling_view_behavior"
-        android:padding="16dp">
+        android:padding="16dp"
+        android:fillViewport="true">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -33,7 +34,7 @@
             android:orientation="vertical">
 
             <!-- Прогресс бар -->
-            <androidx.core.widget.ContentLoadingProgressBar
+            <ProgressBar
                 android:id="@+id/progressBar"
                 style="?android:attr/progressBarStyleHorizontal"
                 android:layout_width="match_parent"
@@ -96,11 +97,12 @@
                 android:textColor="@color/on_surface"
                 android:layout_marginBottom="8dp" />
 
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/recyclerView"
+            <!-- Контейнер для транзакций (должен быть wrap_content) -->
+            <LinearLayout
+                android:id="@+id/transactionsContainer"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:nestedScrollingEnabled="false" />
+                android:orientation="vertical" />
 
             <!-- Сообщение если список пуст -->
             <TextView

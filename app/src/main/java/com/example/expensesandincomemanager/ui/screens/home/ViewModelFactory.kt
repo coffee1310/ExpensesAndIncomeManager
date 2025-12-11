@@ -3,7 +3,7 @@ package com.example.expensesandincomemanager.ui.screens.home
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import data.repository.FinanceRepositoryProvider
+import data.provider.FinanceRepositoryProvider
 
 class HomeViewModelFactory(private val context: Context) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
