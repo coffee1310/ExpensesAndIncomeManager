@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Название категории"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        app:boxStrokeColor="@color/outline">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etCategoryName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:maxLines="1"
+            android:textSize="16sp" />
+
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Цвет категории"
+        android:textSize="14sp"
+        android:textColor="@color/on_surface"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="8dp" />
+
+    <LinearLayout
+        android:id="@+id/colorPicker"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center">
+
+        <View
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:background="@color/category_food"
+            android:layout_margin="4dp"
+            android:tag="#FF6B6B"
+            android:onClick="onColorSelected" />
+
+        <View
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:background="@color/category_transport"
+            android:layout_margin="4dp"
+            android:tag="#5856D6"
+            android:onClick="onColorSelected" />
+
+        <View
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:background="@color/category_entertainment"
+            android:layout_margin="4dp"
+            android:tag="#FFD166"
+            android:onClick="onColorSelected" />
+
+        <View
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:background="@color/category_cafe"
+            android:layout_margin="4dp"
+            android:tag="#06D6A0"
+            android:onClick="onColorSelected" />
+
+        <View
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:background="@color/category_utilities"
+            android:layout_margin="4dp"
+            android:tag="#118AB2"
+            android:onClick="onColorSelected" />
+
+        <View
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:background="@color/category_other"
+            android:layout_margin="4dp"
+            android:tag="#9B5DE5"
+            android:onClick="onColorSelected" />
+
+    </LinearLayout>
+
+</LinearLayout>

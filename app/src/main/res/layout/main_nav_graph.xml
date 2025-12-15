@@ -15,14 +15,14 @@
     <!-- Экран добавления транзакции -->
     <fragment
         android:id="@+id/addTransactionFragment"
-        android:name="com.example.expensesandincomemanager.ui.screens.addtransaction.AddTransactionFragment"
+        android:name="com.example.expensesandincomemanager.ui.screens.transactions.AddTransactionFragment"
         android:label="Новая транзакция"
         tools:layout="@layout/fragment_add_transaction" />
 
     <!-- Экран операций (пока заглушка) -->
     <fragment
         android:id="@+id/transactionsFragment"
-        android:name="com.example.expensesandincomemanager.ui.screens.transactions.TransactionsFragment"
+        android:name="com.example.expensesandincomemanager.ui.screens.transactions.AddTransactionFragment"
         android:label="Операции"
         tools:layout="@layout/fragment_transactions" />
 
