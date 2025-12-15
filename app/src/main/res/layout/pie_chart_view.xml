@@ -5,10 +5,19 @@
     android:layout_height="280dp"
     android:paddingHorizontal="16dp">
 
+    <!-- Круговая диаграмма (по умолчанию видима) -->
     <com.example.expensesandincomemanager.ui.components.DoughnutChartView
         android:id="@+id/doughnut_chart"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="match_parent"
+        android:visibility="visible" />
+
+    <!-- Столбчатая диаграмма (по умолчанию скрыта) -->
+    <com.example.expensesandincomemanager.ui.components.BarChartView
+        android:id="@+id/bar_chart"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone" />
 
     <LinearLayout
         android:layout_width="match_parent"

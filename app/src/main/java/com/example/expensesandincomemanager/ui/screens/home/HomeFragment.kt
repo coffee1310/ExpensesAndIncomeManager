@@ -9,6 +9,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.example.expensesandincomemanager.R
+import com.example.expensesandincomemanager.ui.components.BarChartView
 import com.example.expensesandincomemanager.ui.components.DoughnutChartView
 import com.google.android.material.card.MaterialCardView
 import data.models.ExpenseCategory
@@ -20,6 +21,13 @@ class HomeFragment : Fragment() {
 
     private var rootView: View? = null
     private lateinit var viewModel: HomeViewModel
+
+    // Views для диаграмм
+    private lateinit var doughnutChart: DoughnutChartView
+    private lateinit var barChart: BarChartView
+    private lateinit var pieChartContainer: View
+    private lateinit var tvTotalAmount: TextView
+    private lateinit var tvBalance: TextView
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -38,31 +46,42 @@ class HomeFragment : Fragment() {
             HomeViewModelFactory(requireContext())
         ).get(HomeViewModel::class.java)
 
+        initChartViews()
         setupChartTypeSelector()
         setupObservers()
     }
 
+    private fun initChartViews() {
+        pieChartContainer = requireView().findViewById(R.id.pie_chart_container)
+        doughnutChart = pieChartContainer.findViewById(R.id.doughnut_chart)
+        barChart = pieChartContainer.findViewById(R.id.bar_chart)
+        tvTotalAmount = pieChartContainer.findViewById(R.id.tv_total_amount)
+        tvBalance = pieChartContainer.findViewById(R.id.tv_balance)
+    }
+
     private fun setupChartTypeSelector() {
-        rootView?.findViewById<MaterialCardView>(R.id.btn_pie_chart)?.setOnClickListener {
+        val btnPieChart = rootView?.findViewById<MaterialCardView>(R.id.btn_pie_chart)
+        val btnBarChart = rootView?.findViewById<MaterialCardView>(R.id.btn_bar_chart)
+
+        btnPieChart?.setOnClickListener {
             selectChartType("pie")
         }
 
-        rootView?.findViewById<MaterialCardView>(R.id.btn_bar_chart)?.setOnClickListener {
+        btnBarChart?.setOnClickListener {
             selectChartType("bar")
         }
 
+        // По умолчанию показываем круговую диаграмму
         selectChartType("pie")
     }
 
     override fun onStart() {
         super.onStart()
-        // Или здесь
         viewModel.refreshData()
     }
 
     override fun onResume() {
         super.onResume()
-        // Обновляем данные при каждом возвращении на фрагмент
         viewModel.refreshData()
     }
 
@@ -72,20 +91,27 @@ class HomeFragment : Fragment() {
 
         val btnPieChart = rootView?.findViewById<MaterialCardView>(R.id.btn_pie_chart)
         val btnBarChart = rootView?.findViewById<MaterialCardView>(R.id.btn_bar_chart)
-        val pieChartContainer = rootView?.findViewById<View>(R.id.pie_chart_container)
 
         if (type == "pie") {
+            // Выделяем кнопку пирога
             btnPieChart?.strokeWidth = 2
             btnPieChart?.strokeColor = primaryColor
             btnBarChart?.strokeWidth = 1
             btnBarChart?.strokeColor = outlineColor
-            pieChartContainer?.visibility = View.VISIBLE
+
+            // Показываем круговую диаграмму, скрываем столбчатую
+            doughnutChart.visibility = View.VISIBLE
+            barChart.visibility = View.GONE
         } else {
+            // Выделяем кнопку гистограммы
             btnBarChart?.strokeWidth = 2
             btnBarChart?.strokeColor = primaryColor
             btnPieChart?.strokeWidth = 1
             btnPieChart?.strokeColor = outlineColor
-            pieChartContainer?.visibility = View.GONE
+
+            // Показываем столбчатую диаграмму, скрываем круговую
+            barChart.visibility = View.VISIBLE
+            doughnutChart.visibility = View.GONE
         }
     }
 
@@ -100,7 +126,7 @@ class HomeFragment : Fragment() {
         // Наблюдаем за данными категорий
         lifecycleScope.launch {
             viewModel.expenseCategories.collect { categories ->
-                updatePieChart(categories)
+                updateCharts(categories)
                 updateCategoryLegend(categories)
             }
         }
@@ -193,10 +219,7 @@ class HomeFragment : Fragment() {
         }
     }
 
-
-    private fun updatePieChart(categories: List<HomeViewModel.ExpenseCategoryUI>) {
-        val doughnutChart = rootView?.findViewById<DoughnutChartView>(R.id.doughnut_chart)
-
+    private fun updateCharts(categories: List<HomeViewModel.ExpenseCategoryUI>) {
         val expenseCategories = categories.map {
             ExpenseCategory(
                 id = it.id,
@@ -207,22 +230,21 @@ class HomeFragment : Fragment() {
             )
         }
 
-        doughnutChart?.setData(expenseCategories)
+        // Обновляем обе диаграммы
+        doughnutChart.setData(expenseCategories)
+        barChart.setData(expenseCategories)
     }
 
     private fun updateTotalAmounts(totalIncome: Double, totalExpense: Double, balance: Double) {
-        val tvTotalAmount = rootView?.findViewById<TextView>(R.id.tv_total_amount)
-        val tvBalance = rootView?.findViewById<TextView>(R.id.tv_balance)
-
-        tvTotalAmount?.text = formatCurrency(totalExpense)
+        tvTotalAmount.text = formatCurrency(totalExpense)
 
         val balanceText = "Баланс: ${formatCurrency(balance)}"
-        tvBalance?.text = balanceText
+        tvBalance.text = balanceText
 
         if (balance >= 0) {
-            tvBalance?.setTextColor(requireContext().getColor(R.color.success))
+            tvBalance.setTextColor(requireContext().getColor(R.color.success))
         } else {
-            tvBalance?.setTextColor(requireContext().getColor(R.color.error))
+            tvBalance.setTextColor(requireContext().getColor(R.color.error))
         }
     }
 
