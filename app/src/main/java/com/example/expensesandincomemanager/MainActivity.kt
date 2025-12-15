@@ -1,50 +1,31 @@
 package com.example.expensesandincomemanager
 
 import android.os.Bundle
-import android.util.Log
-import android.view.View
-import android.view.ViewGroup
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.example.expensesandincomemanager.ui.screens.home.HomeFragment
-import com.example.expensesandincomemanager.ui.screens.operations.TransactionsFragment
 import com.example.expensesandincomemanager.ui.screens.transactions.AddTransactionFragment
+import com.example.expensesandincomemanager.ui.screens.transactions.TransactionsFragment
 import data.initial.InitialData
-import data.provider.FinanceRepositoryProvider
 
 class MainActivity : AppCompatActivity() {
-    val TAG = "MainActivity"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        Log.d(TAG, "onCreate called")
-
-        // Проверяем контейнер и навигацию
-        checkLayout()
 
         setupNavigation()
         InitialData.insertInitialData(this)
 
         if (savedInstanceState == null) {
+            // Загружаем HomeFragment как начальный экран
             supportFragmentManager.beginTransaction()
                 .replace(R.id.container, HomeFragment())
                 .commit()
         }
     }
 
-    private fun checkLayout() {
-        val container = findViewById<ViewGroup>(R.id.container)
-
-        Log.d(TAG, "Контейнер: $container")
-
-        if (container == null) {
-            Log.e(TAG, "❌ Контейнер не найден!")
-        }
-
-    }
-
     private fun setupNavigation() {
+        // Навигация через нижнее меню
         findViewById<android.view.View>(R.id.btn_transactions)?.setOnClickListener {
             navigateToTransactions()
         }
@@ -53,6 +34,7 @@ class MainActivity : AppCompatActivity() {
             navigateToHome()
         }
 
+        // Фиолетовая кнопка + для добавления транзакции
         findViewById<com.google.android.material.floatingactionbutton.FloatingActionButton>(R.id.fab_add)?.setOnClickListener {
             navigateToAddTransaction()
         }
@@ -74,21 +56,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun navigateToTransactions() {
-        Log.d(TAG, "Переход на транзакции")
-        try {
-            val fragment = TransactionsFragment()
-            Log.d(TAG, "Фрагмент создан: ${fragment.javaClass.simpleName}")
-
-            supportFragmentManager.beginTransaction()
-                .replace(R.id.container, fragment)
-                .addToBackStack("transactions")
-                .commit()
-
-            Log.d(TAG, "Транзакция коммитнута")
-
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка при переходе на транзакции", e)
-        }
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.container, TransactionsFragment())
+            .addToBackStack(null)
+            .commit()
     }
 
     private fun navigateToAddTransaction() {
@@ -98,24 +69,11 @@ class MainActivity : AppCompatActivity() {
             .commit()
     }
 
-    override fun onResume() {
-        super.onResume()
-        // При возвращении в приложение обновляем данные
-        val homeFragment = supportFragmentManager.findFragmentById(R.id.container) as? HomeFragment
-        homeFragment?.onResume()
-    }
-
     private fun showComingSoon(featureName: String) {
-        Toast.makeText(
+        android.widget.Toast.makeText(
             this,
             "$featureName - в разработке",
-            Toast.LENGTH_SHORT
+            android.widget.Toast.LENGTH_SHORT
         ).show()
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        // Очищаем репозиторий
-        FinanceRepositoryProvider.cleanup()
     }
 }

@@ -58,16 +58,12 @@ interface TransactionDao {
         startDate: Date,
         endDate: Date
     ): Flow<List<CategoryExpenseSummary>>
-    @Query("SELECT * FROM transactions ORDER BY date DESC")
-    fun getAllTransactions(): Flow<List<Transaction>>
 
-    // Добавьте этот метод для получения count
+    @Query("SELECT * FROM transactions ORDER BY date DESC, time DESC")
+    suspend fun getAllTransactions(): List<Transaction>
+
     @Query("SELECT COUNT(*) FROM transactions")
     suspend fun getTransactionCount(): Int
-
-    // Альтернативный метод для прямого получения списка
-    @Query("SELECT * FROM transactions ORDER BY date DESC")
-    suspend fun getAllTransactionsDirect(): List<Transaction>
 
     @Query("""
         SELECT 

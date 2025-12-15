@@ -13,7 +13,6 @@ import data.entities.Category
 import data.entities.Transaction
 import data.entities.Account
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import data.provider.FinanceRepositoryProvider
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.firstOrNull
 import java.text.SimpleDateFormat
@@ -332,8 +331,8 @@ class AddTransactionFragment : Fragment() {
 
         coroutineJob = CoroutineScope(Dispatchers.IO).launch {
             try {
-                val database = FinanceDatabase.getDatabase(requireContext())
-                val repository = FinanceRepositoryProvider.getRepository(requireContext())
+                val database = data.database.FinanceDatabase.getDatabase(requireContext())
+                val repository = data.repository.FinanceRepositoryProvider.getRepository(requireContext())
 
                 // Вставляем транзакцию через репозиторий
                 val transactionId = repository.insertTransaction(transaction)
