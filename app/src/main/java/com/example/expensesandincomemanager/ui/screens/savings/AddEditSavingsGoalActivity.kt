@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.MenuItem
+import android.view.View
 import android.widget.EditText
 import android.widget.ProgressBar
 import android.widget.TextView
@@ -18,6 +19,7 @@ import com.google.android.material.textfield.TextInputLayout
 import data.entities.SavingsGoal
 import data.provider.FinanceRepositoryProvider
 import kotlinx.coroutines.launch
+import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -79,66 +81,89 @@ class AddEditSavingsGoalActivity : AppCompatActivity() {
         goalId = intent.getIntExtra("GOAL_ID", -1).takeIf { it != -1 }
         if (goalId != null) {
             supportActionBar?.title = "Редактирование цели"
-            btnDelete.visibility = android.view.View.VISIBLE
+            btnDelete.visibility = View.VISIBLE
         } else {
             supportActionBar?.title = "Новая цель"
-            btnDelete.visibility = android.view.View.GONE
+            btnDelete.visibility = View.GONE
         }
     }
 
     private fun setupViews() {
         // Настройка ввода суммы с форматированием
-        etTargetAmount.addTextChangedListener(object : TextWatcher {
+        setupAmountTextWatcher(etTargetAmount)
+        setupAmountTextWatcher(etCurrentAmount)
+
+        // Для отображения сохраненных значений при потере фокуса
+        etTargetAmount.onFocusChangeListener = View.OnFocusChangeListener { _, hasFocus ->
+            if (!hasFocus) {
+                formatAmountField(etTargetAmount)
+                updateProgress()
+            }
+        }
+
+        etCurrentAmount.onFocusChangeListener = View.OnFocusChangeListener { _, hasFocus ->
+            if (!hasFocus) {
+                formatAmountField(etCurrentAmount)
+                updateProgress()
+            }
+        }
+    }
+
+    private fun setupAmountTextWatcher(editText: EditText) {
+        editText.addTextChangedListener(object : TextWatcher {
             private var current = ""
+            private var isFormatting = false
+
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+
             override fun afterTextChanged(s: Editable?) {
+                if (isFormatting) return
+
                 if (s.toString() != current) {
-                    etTargetAmount.removeTextChangedListener(this)
+                    isFormatting = true
 
                     val cleanString = s.toString().replace("[^\\d]".toRegex(), "")
+
                     if (cleanString.isNotEmpty()) {
-                        val parsed = cleanString.toDouble() / 100
-                        val formatted = String.format("%,.0f", parsed)
-                        current = formatted
-                        etTargetAmount.setText(formatted)
-                        etTargetAmount.setSelection(formatted.length)
+                        try {
+                            val number = cleanString.toLong()
+                            val formatted = NumberFormat.getNumberInstance(Locale.getDefault())
+                                .apply { maximumFractionDigits = 0 }
+                                .format(number)
+                            current = formatted
+                            s?.replace(0, s.length, formatted)
+                        } catch (e: Exception) {
+                            current = ""
+                            s?.clear()
+                        }
                     } else {
                         current = ""
-                        etTargetAmount.setText("")
+                        s?.clear()
                     }
 
-                    etTargetAmount.addTextChangedListener(this)
+                    isFormatting = false
                     updateProgress()
                 }
             }
         })
+    }
 
-        etCurrentAmount.addTextChangedListener(object : TextWatcher {
-            private var current = ""
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-            override fun afterTextChanged(s: Editable?) {
-                if (s.toString() != current) {
-                    etCurrentAmount.removeTextChangedListener(this)
+    private fun formatAmountField(editText: EditText) {
+        val text = editText.text.toString()
+        val cleanString = text.replace("[^\\d]".toRegex(), "")
 
-                    val cleanString = s.toString().replace("[^\\d]".toRegex(), "")
-                    if (cleanString.isNotEmpty()) {
-                        val parsed = cleanString.toDouble() / 100
-                        val formatted = String.format("%,.0f", parsed)
-                        current = formatted
-                        etCurrentAmount.setText(formatted)
-                        etCurrentAmount.setSelection(formatted.length)
-                    } else {
-                        current = ""
-                        etCurrentAmount.setText("")
-                    }
-
-                    etCurrentAmount.addTextChangedListener(this)
-                    updateProgress()
-                }
+        if (cleanString.isNotEmpty()) {
+            try {
+                val number = cleanString.toLong()
+                val formatted = NumberFormat.getNumberInstance(Locale.getDefault())
+                    .apply { maximumFractionDigits = 0 }
+                    .format(number)
+                editText.setText(formatted)
+            } catch (e: Exception) {
+                editText.setText("")
             }
-        })
+        }
     }
 
     private fun loadGoalData() {
@@ -152,8 +177,18 @@ class AddEditSavingsGoalActivity : AppCompatActivity() {
 
     private fun populateFields(goal: SavingsGoal) {
         etGoalName.setText(goal.name)
-        etTargetAmount.setText(String.format("%,.0f", goal.targetAmount))
-        etCurrentAmount.setText(String.format("%,.0f", goal.currentAmount))
+
+        // Форматируем суммы при отображении
+        val targetAmountFormatted = NumberFormat.getNumberInstance(Locale.getDefault())
+            .apply { maximumFractionDigits = 0 }
+            .format(goal.targetAmount.toLong())
+        etTargetAmount.setText(targetAmountFormatted)
+
+        val currentAmountFormatted = NumberFormat.getNumberInstance(Locale.getDefault())
+            .apply { maximumFractionDigits = 0 }
+            .format(goal.currentAmount.toLong())
+        etCurrentAmount.setText(currentAmountFormatted)
+
         etDescription.setText(goal.description ?: "")
 
         goal.targetDate?.let { date ->
@@ -161,6 +196,8 @@ class AddEditSavingsGoalActivity : AppCompatActivity() {
             val dateFormat = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
             etDate.setText(dateFormat.format(date))
         }
+
+        updateProgress()
     }
 
     private fun setupListeners() {
@@ -192,11 +229,11 @@ class AddEditSavingsGoalActivity : AppCompatActivity() {
         val currentAmountStr = etCurrentAmount.text.toString().replace("[^\\d]".toRegex(), "")
 
         if (targetAmountStr.isNotEmpty()) {
-            val targetAmount = targetAmountStr.toDouble() / 100
-            val currentAmount = if (currentAmountStr.isNotEmpty()) currentAmountStr.toDouble() / 100 else 0.0
+            val targetAmount = targetAmountStr.toDoubleOrNull() ?: 0.0
+            val currentAmount = if (currentAmountStr.isNotEmpty()) currentAmountStr.toDoubleOrNull() ?: 0.0 else 0.0
 
             val progress = if (targetAmount > 0) {
-                ((currentAmount / targetAmount) * 100).toInt()
+                ((currentAmount / targetAmount) * 100).toInt().coerceIn(0, 100)
             } else {
                 0
             }
@@ -205,16 +242,24 @@ class AddEditSavingsGoalActivity : AppCompatActivity() {
             tvProgressPercent.text = "$progress%"
 
             val remaining = targetAmount - currentAmount
-            tvRemainingText.text = String.format("Осталось: %,.0f ₽", remaining)
+            if (remaining >= 0) {
+                tvRemainingText.text = String.format("Осталось: %,.0f ₽", remaining)
+            } else {
+                tvRemainingText.text = String.format("Превышено на: %,.0f ₽", -remaining)
+            }
 
             // Подсвечиваем поле текущей суммы если превышена цель
             if (currentAmount > targetAmount) {
-                tilCurrentAmount.error = "Текущая сумма не может превышать целевую"
+                tilCurrentAmount.error = "Текущая сумма превышает целевую"
                 progressBar.progressTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.error))
             } else {
                 tilCurrentAmount.error = null
                 progressBar.progressTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.primary))
             }
+        } else {
+            progressBar.progress = 0
+            tvProgressPercent.text = "0%"
+            tvRemainingText.text = "Осталось: 0 ₽"
         }
     }
 
@@ -246,12 +291,12 @@ class AddEditSavingsGoalActivity : AppCompatActivity() {
         val tvTarget = dialogView.findViewById<TextView>(R.id.tvTargetAmount)
 
         val targetAmountStr = etTargetAmount.text.toString().replace("[^\\d]".toRegex(), "")
-        val targetAmount = if (targetAmountStr.isNotEmpty()) targetAmountStr.toDouble() / 100 else 0.0
+        val targetAmount = if (targetAmountStr.isNotEmpty()) targetAmountStr.toDouble() else 0.0
         tvTarget.text = String.format("Целевая сумма: %,.0f ₽", targetAmount)
 
         val currentAmountStr = etCurrentAmount.text.toString().replace("[^\\d]".toRegex(), "")
         if (currentAmountStr.isNotEmpty()) {
-            val currentAmount = currentAmountStr.toDouble() / 100
+            val currentAmount = currentAmountStr.toDouble()
             etAmount.setText(String.format("%,.0f", currentAmount))
         }
 
@@ -261,8 +306,9 @@ class AddEditSavingsGoalActivity : AppCompatActivity() {
             .setPositiveButton("Сохранить") { _, _ ->
                 val amountStr = etAmount.text.toString().replace("[^\\d]".toRegex(), "")
                 if (amountStr.isNotEmpty()) {
-                    val amount = amountStr.toDouble() / 100
+                    val amount = amountStr.toDouble()
                     etCurrentAmount.setText(String.format("%,.0f", amount))
+                    updateProgress()
                 }
             }
             .setNegativeButton("Отмена", null)
@@ -292,8 +338,8 @@ class AddEditSavingsGoalActivity : AppCompatActivity() {
         }
 
         if (currentAmountStr.isNotEmpty()) {
-            val targetAmount = targetAmountStr.toDouble() / 100
-            val currentAmount = currentAmountStr.toDouble() / 100
+            val targetAmount = targetAmountStr.toDoubleOrNull() ?: 0.0
+            val currentAmount = currentAmountStr.toDoubleOrNull() ?: 0.0
 
             if (currentAmount > targetAmount) {
                 tilCurrentAmount.error = "Текущая сумма не может превышать целевую"
@@ -307,8 +353,8 @@ class AddEditSavingsGoalActivity : AppCompatActivity() {
             return
         }
 
-        val targetAmount = targetAmountStr.toDouble() / 100
-        val currentAmount = if (currentAmountStr.isNotEmpty()) currentAmountStr.toDouble() / 100 else 0.0
+        val targetAmount = targetAmountStr.toDoubleOrNull() ?: 0.0
+        val currentAmount = if (currentAmountStr.isNotEmpty()) currentAmountStr.toDoubleOrNull() ?: 0.0 else 0.0
 
         val description = etDescription.text.toString().trim()
         val isCompleted = currentAmount >= targetAmount

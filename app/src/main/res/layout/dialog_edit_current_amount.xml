@@ -2,6 +2,7 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:orientation="vertical"
     android:padding="16dp">
 
@@ -14,21 +15,20 @@
         android:textSize="14sp"
         android:layout_marginBottom="16dp" />
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Текущая сумма (₽)"
-        android:textColor="@color/on_surface"
-        android:textSize="14sp"
-        android:layout_marginBottom="4dp" />
-
-    <EditText
-        android:id="@+id/etAmount"
+    <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Введите сумму"
-        android:inputType="number"
-        android:maxLines="1"
-        android:textSize="16sp" />
+        android:hint="Текущая сумма"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        app:prefixText="₽">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etAmount"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="number"
+            android:textSize="16sp" />
+
+    </com.google.android.material.textfield.TextInputLayout>
 
 </LinearLayout>

@@ -42,4 +42,10 @@
     <color name="category_cafe">#06D6A0</color>
     <color name="category_utilities">#118AB2</color>
     <color name="category_other">#9B5DE5</color>
+
+    <style name="MyTextInputLayout" parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+        <item name="hintTextColor">@color/on_surface_variant</item>
+        <item name="boxStrokeColor">@color/outline</item>
+        <item name="errorTextColor">@color/error</item>
+    </style>
 </resources>
