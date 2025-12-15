@@ -25,26 +25,21 @@ class BarChartView @JvmOverloads constructor(
         style = Paint.Style.FILL
     }
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = ContextCompat.getColor(context, R.color.on_surface)
-        textSize = 12f * resources.displayMetrics.density
-        textAlign = Paint.Align.LEFT
+        color = ContextCompat.getColor(context, R.color.on_surface_variant)
+        textSize = 11f * resources.displayMetrics.density
+        textAlign = Paint.Align.CENTER
     }
     private val axisPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = ContextCompat.getColor(context, R.color.outline)
-        strokeWidth = 2f
-        style = Paint.Style.STROKE
-    }
-    private val gridPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = ContextCompat.getColor(context, R.color.outline).withAlpha(0x33)
         strokeWidth = 1f
         style = Paint.Style.STROKE
     }
 
-    private val paddingStart = 60f
+    private val paddingStart = 20f
     private val paddingEnd = 20f
-    private val paddingTop = 40f
-    private val paddingBottom = 60f
-    private val barSpacing = 8f
+    private val paddingTop = 20f
+    private val paddingBottom = 40f
+    private val barSpacing = 12f
 
     fun setData(categories: List<ExpenseCategory>) {
         this.categories = categories
@@ -65,7 +60,6 @@ class BarChartView @JvmOverloads constructor(
         val chartWidth = width - paddingStart - paddingEnd
         val chartHeight = height - paddingTop - paddingBottom
 
-        drawGrid(canvas, width, height, chartHeight)
         drawAxes(canvas, width, height)
         drawBars(canvas, chartWidth, chartHeight)
         drawLabels(canvas, chartWidth, chartHeight)
@@ -84,29 +78,12 @@ class BarChartView @JvmOverloads constructor(
         canvas.drawText(text, x, y, paint)
     }
 
-    private fun drawGrid(canvas: Canvas, width: Float, height: Float, chartHeight: Float) {
-        // Горизонтальные линии сетки
-        for (i in 0..4) {
-            val y = paddingTop + (chartHeight / 4) * i
-            canvas.drawLine(paddingStart, y, width - paddingEnd, y, gridPaint)
-        }
-    }
-
     private fun drawAxes(canvas: Canvas, width: Float, height: Float) {
-        // Ось X
+        // Ось X (базовая линия)
         canvas.drawLine(
             paddingStart,
             height - paddingBottom,
             width - paddingEnd,
-            height - paddingBottom,
-            axisPaint
-        )
-
-        // Ось Y
-        canvas.drawLine(
-            paddingStart,
-            paddingTop,
-            paddingStart,
             height - paddingBottom,
             axisPaint
         )
@@ -119,27 +96,21 @@ class BarChartView @JvmOverloads constructor(
 
         categories.forEachIndexed { index, category ->
             val barHeight = (category.amount / maxAmount * chartHeight).toFloat()
-            val left = paddingStart + index * (barWidth + barSpacing)
+            val left = paddingStart + index * (barWidth + barSpacing) + barSpacing / 2
             val top = paddingTop + chartHeight - barHeight
             val right = left + barWidth
             val bottom = paddingTop + chartHeight
 
-            barPaint.color = category.color
+            // Градиент или тень для эффекта глубины
+            barPaint.color = category.color.withAlpha(0xFF)
             canvas.drawRect(RectF(left, top, right, bottom), barPaint)
 
-            // Процентное значение на вершине столбца
-            if (category.percentage > 0) {
-                val percentText = "${category.percentage.toInt()}%"
-                val textX = left + barWidth / 2
-                val textY = top - 5
-
-                val percentPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                    color = ContextCompat.getColor(context, R.color.on_surface)
-                    textSize = 10f * resources.displayMetrics.density
-                    textAlign = Paint.Align.CENTER
-                }
-                canvas.drawText(percentText, textX, textY, percentPaint)
+            // Более светлый верх для 3D эффекта
+            val highlightPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = category.color.withAlpha(0x30)
+                style = Paint.Style.FILL
             }
+            canvas.drawRect(RectF(left, top, right, top + 8), highlightPaint)
         }
     }
 
@@ -150,27 +121,18 @@ class BarChartView @JvmOverloads constructor(
 
         // Подписи категорий под столбцами
         categories.forEachIndexed { index, category ->
-            val left = paddingStart + index * (barWidth + barSpacing)
+            val left = paddingStart + index * (barWidth + barSpacing) + barSpacing / 2
             val textX = left + barWidth / 2
-            val textY = paddingTop + chartHeight + 15
+            val textY = paddingTop + chartHeight + 20
 
             // Обрезаем длинные названия
-            val displayName = if (category.name.length > 8) {
-                category.name.substring(0, 8) + ".."
+            val displayName = if (category.name.length > 6) {
+                category.name.substring(0, 6) + ".."
             } else {
                 category.name
             }
 
-            canvas.drawText(displayName, textX, textY, textPaint.apply { textAlign = Paint.Align.CENTER })
-        }
-
-        // Подписи значений на оси Y
-        for (i in 0..4) {
-            val value = maxAmount / 4 * (4 - i)
-            val text = if (value >= 1000) "${(value / 1000).toInt()}к" else value.toInt().toString()
-            val y = paddingTop + (chartHeight / 4) * i
-
-            canvas.drawText(text, 5f, y - 5, textPaint.apply { textAlign = Paint.Align.LEFT })
+            canvas.drawText(displayName, textX, textY, textPaint)
         }
     }
 

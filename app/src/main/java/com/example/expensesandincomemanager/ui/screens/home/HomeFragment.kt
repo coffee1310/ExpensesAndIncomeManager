@@ -26,6 +26,7 @@ class HomeFragment : Fragment() {
     private lateinit var doughnutChart: DoughnutChartView
     private lateinit var barChart: BarChartView
     private lateinit var pieChartContainer: View
+    private lateinit var chartInfoContainer: View
     private lateinit var tvTotalAmount: TextView
     private lateinit var tvBalance: TextView
 
@@ -55,6 +56,7 @@ class HomeFragment : Fragment() {
         pieChartContainer = requireView().findViewById(R.id.pie_chart_container)
         doughnutChart = pieChartContainer.findViewById(R.id.doughnut_chart)
         barChart = pieChartContainer.findViewById(R.id.bar_chart)
+        chartInfoContainer = pieChartContainer.findViewById(R.id.chart_info_container)
         tvTotalAmount = pieChartContainer.findViewById(R.id.tv_total_amount)
         tvBalance = pieChartContainer.findViewById(R.id.tv_balance)
     }
@@ -102,6 +104,9 @@ class HomeFragment : Fragment() {
             // Показываем круговую диаграмму, скрываем столбчатую
             doughnutChart.visibility = View.VISIBLE
             barChart.visibility = View.GONE
+
+            // Показываем текст по центру
+            chartInfoContainer.visibility = View.VISIBLE
         } else {
             // Выделяем кнопку гистограммы
             btnBarChart?.strokeWidth = 2
@@ -112,6 +117,9 @@ class HomeFragment : Fragment() {
             // Показываем столбчатую диаграмму, скрываем круговую
             barChart.visibility = View.VISIBLE
             doughnutChart.visibility = View.GONE
+
+            // Скрываем текст по центру для минимализма
+            chartInfoContainer.visibility = View.GONE
         }
     }
 
