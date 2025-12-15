@@ -24,4 +24,7 @@ interface AccountDao {
 
     @Query("UPDATE accounts SET balance = balance + :amount WHERE id = :id")
     suspend fun updateBalance(id: Int, amount: Double)
+
+    @Query("SELECT COUNT(*) FROM accounts")
+    suspend fun getCount(): Int
 }

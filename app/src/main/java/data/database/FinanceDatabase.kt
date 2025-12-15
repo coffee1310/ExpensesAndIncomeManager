@@ -9,6 +9,7 @@ import data.converters.Converters
 import data.dao.AccountDao
 import data.dao.BudgetDao
 import data.dao.CategoryDao
+import data.dao.SavingsGoalDao
 import data.dao.TransactionDao
 import data.entities.*
 
@@ -17,9 +18,10 @@ import data.entities.*
         Category::class,
         Transaction::class,
         Account::class,
-        Budget::class
+        Budget::class,
+        SavingsGoal::class  // Добавлено
     ],
-    version = 1,
+    version = 2,  // Увеличьте версию
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -28,6 +30,7 @@ abstract class FinanceDatabase : RoomDatabase() {
     abstract fun transactionDao(): TransactionDao
     abstract fun accountDao(): AccountDao
     abstract fun budgetDao(): BudgetDao
+    abstract fun savingsGoalDao(): SavingsGoalDao  // Добавлено
 
     companion object {
         @Volatile

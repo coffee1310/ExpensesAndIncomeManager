@@ -21,8 +21,11 @@ data class SavingsGoal(
     @ColumnInfo(name = "current_amount")
     val currentAmount: Double = 0.0,
 
+    @ColumnInfo(name = "description")
+    val description: String? = null,
+
     @ColumnInfo(name = "target_date")
-    val targetDate: Date?,
+    val targetDate: Date? = null,
 
     @ColumnInfo(name = "color")
     val color: String = "#34C759",
@@ -35,4 +38,16 @@ data class SavingsGoal(
 
     @ColumnInfo(name = "created_at")
     val createdAt: Date = Date()
-)
+) {
+    fun getProgress(): Int {
+        return if (targetAmount > 0) {
+            ((currentAmount / targetAmount) * 100).toInt()
+        } else {
+            0
+        }
+    }
+
+    fun getRemainingAmount(): Double {
+        return targetAmount - currentAmount
+    }
+}

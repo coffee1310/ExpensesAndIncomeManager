@@ -1,17 +1,22 @@
 package com.example.expensesandincomemanager
 
 import android.os.Bundle
+import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import com.example.expensesandincomemanager.ui.screens.home.HomeFragment
+import com.example.expensesandincomemanager.ui.screens.operations.TransactionsFragment
+import com.example.expensesandincomemanager.ui.screens.plan.PlanFragment
 import com.example.expensesandincomemanager.ui.screens.transactions.AddTransactionFragment
-import com.example.expensesandincomemanager.ui.screens.transactions.TransactionsFragment
 import data.initial.InitialData
 
 class MainActivity : AppCompatActivity() {
 
+    val TAG = "MainActivity"
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        Log.d(TAG, "onCreate called")
 
         setupNavigation()
         InitialData.insertInitialData(this)
@@ -40,7 +45,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         findViewById<android.view.View>(R.id.btn_plan)?.setOnClickListener {
-            showComingSoon("Планирование")
+            navigateToPlan()
         }
 
         findViewById<android.view.View>(R.id.btn_settings)?.setOnClickListener {
@@ -67,6 +72,20 @@ class MainActivity : AppCompatActivity() {
             .replace(R.id.container, AddTransactionFragment())
             .addToBackStack(null)
             .commit()
+    }
+
+    private fun navigateToPlan() {
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.container, PlanFragment())
+            .addToBackStack(null)
+            .commit()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // При возвращении в приложение обновляем данные
+        val homeFragment = supportFragmentManager.findFragmentById(R.id.container) as? HomeFragment
+        homeFragment?.onResume()
     }
 
     private fun showComingSoon(featureName: String) {

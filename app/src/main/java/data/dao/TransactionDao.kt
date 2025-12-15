@@ -88,4 +88,7 @@ interface TransactionDao {
         val type: String,
         val total_amount: Double
     )
+
+    @Query("SELECT * FROM transactions")
+    suspend fun getAllTransactionsDirect(): List<Transaction>
 }

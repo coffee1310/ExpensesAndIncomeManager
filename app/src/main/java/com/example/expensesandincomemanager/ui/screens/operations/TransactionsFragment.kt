@@ -1,27 +1,29 @@
 package com.example.expensesandincomemanager.ui.screens.operations
 
-
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
+import android.widget.*
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.example.expensesandincomemanager.R
 import data.database.FinanceDatabase
 import data.entities.Transaction
-import com.example.expensesandincomemanager.ui.adapters.TransactionsAdapter
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.*
 
 class TransactionsFragment : Fragment() {
 
-    private lateinit var adapter: TransactionsAdapter
-    private val transactionsList = mutableListOf<Transaction>()
+    private lateinit var recyclerView: RecyclerView
+    private lateinit var adapter: TransactionAdapter
     private val TAG = "TransactionsFragment"
 
     override fun onCreateView(
@@ -55,25 +57,23 @@ class TransactionsFragment : Fragment() {
     }
 
     private fun setupRecyclerView() {
-        val recyclerView = view?.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.recyclerView)
-
-        adapter = TransactionsAdapter(transactionsList) { transaction ->
+        recyclerView = view?.findViewById(R.id.recyclerView) ?: return
+        adapter = TransactionAdapter(emptyList()) { transaction ->
             showTransactionDetails(transaction)
         }
 
-        recyclerView?.layoutManager = LinearLayoutManager(requireContext())
-        recyclerView?.adapter = adapter
-
-        Log.d(TAG, "RecyclerView setup complete. Adapter set: ${recyclerView?.adapter != null}")
+        recyclerView.layoutManager = LinearLayoutManager(requireContext())
+        recyclerView.adapter = adapter
+        Log.d(TAG, "RecyclerView setup complete")
     }
 
     private fun setupEmptyState() {
-        val tvEmptyState = view?.findViewById<android.widget.TextView>(R.id.tvEmptyState)
+        val tvEmptyState = view?.findViewById<TextView>(R.id.tvEmptyState)
         tvEmptyState?.visibility = View.GONE
     }
 
     private fun setupRefreshButton() {
-        view?.findViewById<android.widget.Button>(R.id.btnRefresh)?.setOnClickListener {
+        view?.findViewById<Button>(R.id.btnRefresh)?.setOnClickListener {
             Log.d(TAG, "Refresh button clicked")
             loadTransactions()
         }
@@ -90,93 +90,202 @@ class TransactionsFragment : Fragment() {
                 val database = FinanceDatabase.getDatabase(requireContext())
                 Log.d(TAG, "Database instance obtained")
 
-                // Сначала проверим количество транзакций
-                val count = database.transactionDao().getTransactionCount()
-                Log.d(TAG, "Transaction count in database: $count")
+                // Получаем транзакции
+                val transactions = withContext(Dispatchers.IO) {
+                    try {
+                        // Пробуем получить как suspend метод
+                        database.transactionDao().getAllTransactions()
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error getting transactions: ${e.message}")
+                        emptyList()
+                    }
+                }
 
-                if (count > 0) {
-                    // Загружаем ВСЕ транзакции
-                    Log.d(TAG, "Loading all transactions...")
-                    val transactions = database.transactionDao().getAllTransactions()
-                    Log.d(TAG, "Loaded ${transactions.size} transactions")
+                Log.d(TAG, "Loaded ${transactions.size} transactions")
 
-                    if (transactions.isNotEmpty()) {
-                        // Логируем информацию о каждой транзакции
-                        transactions.forEachIndexed { index, transaction ->
-                            Log.d(TAG, "Transaction $index: ID=${transaction.id}, Type=${transaction.type}, Amount=${transaction.amount}, Date=${transaction.date}")
-                        }
-
-                        // Обновляем список
-                        transactionsList.clear()
-                        transactionsList.addAll(transactions)
-
-                        // Обновляем UI
-                        launch {
-                            adapter.updateData(transactions)
-                            updateTransactionCount(transactions.size)
-                            showEmptyState(false)
-                            Log.d(TAG, "Adapter updated with ${transactions.size} items")
-                        }
-                    } else {
-                        Log.d(TAG, "No transactions returned from database")
-                        showEmptyState(true)
-                        updateTransactionCount(0)
+                if (transactions.isNotEmpty()) {
+                    // Обновляем UI в главном потоке
+                    withContext(Dispatchers.Main) {
+                        Log.d(TAG, "Displaying ${transactions.size} transactions in UI")
+                        adapter.updateData(transactions)
+                        updateTransactionCount(transactions.size)
+                        showEmptyState(false)
                     }
                 } else {
-                    Log.d(TAG, "Database is empty (count = 0)")
-                    showEmptyState(true)
-                    updateTransactionCount(0)
-                    Toast.makeText(requireContext(), "База данных пуста. Добавьте транзакции на главном экране.", Toast.LENGTH_LONG).show()
+                    withContext(Dispatchers.Main) {
+                        Log.d(TAG, "No transactions found, showing empty state")
+                        showEmptyState(true)
+                        updateTransactionCount(0)
+
+                        // Показываем информацию о базе данных
+                        checkDatabaseStatus()
+                    }
                 }
 
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading transactions: ${e.message}", e)
                 e.printStackTrace()
-                Toast.makeText(requireContext(), "Ошибка загрузки: ${e.message}", Toast.LENGTH_SHORT).show()
-                showEmptyState(true)
+
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(
+                        requireContext(),
+                        "Ошибка загрузки: ${e.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    showEmptyState(true)
+                }
             } finally {
-                showLoading(false)
+                withContext(Dispatchers.Main) {
+                    showLoading(false)
+                    Log.d(TAG, "Loading finished")
+                }
+            }
+        }
+    }
+
+    private suspend fun checkDatabaseStatus() {
+        withContext(Dispatchers.IO) {
+            try {
+                val database = FinanceDatabase.getDatabase(requireContext())
+                // Проверяем, есть ли вообще таблицы
+                val transactionCount = database.transactionDao().getTransactionCount()
+                Log.d(TAG, "Transaction count in DB: $transactionCount")
+
+                if (transactionCount == 0) {
+                    // Проверяем другие таблицы
+                    val categoryCount = database.categoryDao().getCategoryCount()
+                    val accountCount = database.accountDao().getCount() // Используйте getCount()
+
+                    Log.d(TAG, "DB status - Categories: $categoryCount, Accounts: $accountCount, Transactions: $transactionCount")
+
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(
+                            requireContext(),
+                            "База данных пуста. Создайте счета и категории, затем добавьте транзакции.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error checking DB status: ${e.message}")
             }
         }
     }
 
     private fun showLoading(show: Boolean) {
-        view?.findViewById<android.widget.ProgressBar>(R.id.progressBar)?.visibility =
+        view?.findViewById<ProgressBar>(R.id.progressBar)?.visibility =
             if (show) View.VISIBLE else View.GONE
     }
 
     private fun showEmptyState(show: Boolean) {
-        val tvEmptyState = view?.findViewById<android.widget.TextView>(R.id.tvEmptyState)
-        val recyclerView = view?.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.recyclerView)
+        val tvEmptyState = view?.findViewById<TextView>(R.id.tvEmptyState)
+        val container = view?.findViewById<RecyclerView>(R.id.recyclerView)
 
         if (show) {
             tvEmptyState?.visibility = View.VISIBLE
-            recyclerView?.visibility = View.GONE
+            container?.visibility = View.GONE
             Log.d(TAG, "Empty state shown")
         } else {
             tvEmptyState?.visibility = View.GONE
-            recyclerView?.visibility = View.VISIBLE
+            container?.visibility = View.VISIBLE
             Log.d(TAG, "Empty state hidden")
         }
     }
 
     private fun updateTransactionCount(count: Int) {
-        view?.findViewById<android.widget.TextView>(R.id.tvTransactionCount)?.text =
+        view?.findViewById<TextView>(R.id.tvTransactionCount)?.text =
             "Всего операций: $count"
         Log.d(TAG, "Transaction count updated: $count")
     }
 
     private fun showTransactionDetails(transaction: Transaction) {
-        val dateFormat = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
-        val typeText = if (transaction.type == "income") "Доход" else "Расход"
-        val description = transaction.description ?: "Без описания"
+        // Открываем фрагмент редактирования
+        val editFragment = EditTransactionFragment.newInstance(transaction.id)
 
-        Toast.makeText(
-            requireContext(),
-            "$typeText\nСумма: ${transaction.amount} ₽\nДата: ${dateFormat.format(transaction.date)}\nОписание: $description",
-            Toast.LENGTH_LONG
-        ).show()
+        requireActivity().supportFragmentManager.beginTransaction()
+            .replace(R.id.container, editFragment)
+            .addToBackStack("edit_transaction")
+            .commit()
+    }
 
-        Log.d(TAG, "Transaction details shown: ID=${transaction.id}, Type=$typeText")
+    override fun onResume() {
+        super.onResume()
+        Log.d(TAG, "onResume called, refreshing transactions")
+        loadTransactions()
+    }
+}
+
+// Простой адаптер для RecyclerView
+class TransactionAdapter(
+    private var transactions: List<Transaction>,
+    private val onItemClick: (Transaction) -> Unit
+) : RecyclerView.Adapter<TransactionAdapter.TransactionViewHolder>() {
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TransactionViewHolder {
+        val view = LayoutInflater.from(parent.context)
+            .inflate(R.layout.item_transaction, parent, false)
+        return TransactionViewHolder(view)
+    }
+
+    override fun onBindViewHolder(holder: TransactionViewHolder, position: Int) {
+        val transaction = transactions[position]
+        holder.bind(transaction)
+        holder.itemView.setOnClickListener { onItemClick(transaction) }
+    }
+
+    override fun getItemCount(): Int = transactions.size
+
+    fun updateData(newTransactions: List<Transaction>) {
+        transactions = newTransactions
+        notifyDataSetChanged()
+    }
+
+    class TransactionViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        private val tvCategory: TextView = itemView.findViewById(R.id.tvCategory)
+        private val tvAmount: TextView = itemView.findViewById(R.id.tvAmount)
+        private val tvDate: TextView = itemView.findViewById(R.id.tvDate)
+        private val tvDescription: TextView = itemView.findViewById(R.id.tvDescription)
+        private val ivTypeIcon: View = itemView.findViewById(R.id.typeIndicator)
+
+        fun bind(transaction: Transaction) {
+            // Форматируем сумму
+            val amountText = if (transaction.type == "income") {
+                "+${transaction.amount} ₽"
+            } else {
+                "-${transaction.amount} ₽"
+            }
+            tvAmount.text = amountText
+
+            // Устанавливаем цвет суммы
+            val color = if (transaction.type == "income") {
+                itemView.context.getColor(R.color.success)
+            } else {
+                itemView.context.getColor(R.color.error)
+            }
+            tvAmount.setTextColor(color)
+
+            // Форматируем дату
+            val dateFormat = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
+            tvDate.text = dateFormat.format(transaction.date)
+
+            // Описание (если есть)
+            transaction.description?.let {
+                tvDescription.text = it
+                tvDescription.visibility = View.VISIBLE
+            } ?: run {
+                tvDescription.visibility = View.GONE
+            }
+
+            // TODO: Загрузить название категории из базы
+            tvCategory.text = "Категория ${transaction.categoryId ?: 0}"
+
+            // Индикатор типа (цветной круг)
+            val indicatorColor = if (transaction.type == "income") {
+                itemView.context.getColor(R.color.success)
+            } else {
+                itemView.context.getColor(R.color.error)
+            }
+            ivTypeIcon.setBackgroundColor(indicatorColor)
+        }
     }
 }
