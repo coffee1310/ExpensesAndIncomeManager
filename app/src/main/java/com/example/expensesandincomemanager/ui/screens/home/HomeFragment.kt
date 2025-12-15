@@ -40,14 +40,6 @@ class HomeFragment : Fragment() {
 
         setupChartTypeSelector()
         setupObservers()
-
-        // Наблюдаем за обновлениями транзакций
-        viewModel.transactionsUpdated.observe(viewLifecycleOwner) { updated ->
-            if (updated) {
-                // Принудительно обновляем данные
-                viewModel.refreshData()
-            }
-        }
     }
 
     private fun setupChartTypeSelector() {
@@ -60,6 +52,18 @@ class HomeFragment : Fragment() {
         }
 
         selectChartType("pie")
+    }
+
+    override fun onStart() {
+        super.onStart()
+        // Или здесь
+        viewModel.refreshData()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Обновляем данные при каждом возвращении на фрагмент
+        viewModel.refreshData()
     }
 
     private fun selectChartType(type: String) {

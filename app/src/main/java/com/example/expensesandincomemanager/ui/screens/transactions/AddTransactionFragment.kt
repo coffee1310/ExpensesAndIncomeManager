@@ -5,30 +5,31 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import com.example.expensesandincomemanager.R
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import data.database.FinanceDatabase
+import data.entities.Account
 import data.entities.Category
 import data.entities.Transaction
-import data.entities.Account
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
 import java.text.SimpleDateFormat
 import java.util.*
 
 class AddTransactionFragment : Fragment() {
 
-    private lateinit var selectedCategory: Category
-    private lateinit var selectedAccount: Account
+    private var selectedCategory: Category? = null
+    private var selectedAccount: Account? = null
     private var selectedDate = Calendar.getInstance()
     private var transactionType = "expense" // По умолчанию расход
 
-    private val calendar = Calendar.getInstance()
+    // Используем viewLifecycleOwner для корутин
+    private val coroutineScope get() = viewLifecycleOwner.lifecycleScope
+
+    // Job для управления корутинами
+    private var currentJob: Job? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -50,6 +51,12 @@ class AddTransactionFragment : Fragment() {
 
         // Загружаем данные по умолчанию
         loadDefaultData()
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        // Отменяем все корутины при уничтожении View
+        currentJob?.cancel()
     }
 
     private fun setupToolbar() {
@@ -89,6 +96,9 @@ class AddTransactionFragment : Fragment() {
             incomeCard?.strokeWidth = 1
             incomeCard?.strokeColor = outlineColor
         }
+
+        // ВАЖНО: Обновляем категории при изменении типа
+        loadCategoriesByType(type)
     }
 
     private fun setupCategorySelector() {
@@ -113,54 +123,109 @@ class AddTransactionFragment : Fragment() {
     }
 
     private fun showCategoryDialog() {
-        CoroutineScope(Dispatchers.IO).launch {
-            val database = FinanceDatabase.getDatabase(requireContext())
-            val categories = database.categoryDao().getCategoriesByType(transactionType)
+        // Проверяем контекст перед началом
+        val safeContext = context ?: return
+        if (!isAdded) return
 
-            categories.collect { categoryList ->
+        currentJob = coroutineScope.launch {
+            try {
+                val database = FinanceDatabase.getDatabase(safeContext)
+                val categoriesFlow = database.categoryDao().getCategoriesByType(transactionType)
+
                 withContext(Dispatchers.Main) {
-                    val categoryNames = categoryList.map { it.name }
+                    // Еще раз проверяем, что фрагмент все еще привязан
+                    if (!isAdded || context == null) return@withContext
 
-                    MaterialAlertDialogBuilder(requireContext())
-                        .setTitle("Выберите категорию")
-                        .setItems(categoryNames.toTypedArray()) { dialog, which ->
-                            selectedCategory = categoryList[which]
-                            view?.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.categoryEditText)?.setText(selectedCategory.name)
-                            dialog.dismiss()
+                    // Собираем категории в Main потоке
+                    coroutineScope.launch {
+                        categoriesFlow.collect { categoryList ->
+                            val categoryNames = categoryList.map { it.name }
+
+                            // Показываем диалог только если фрагмент активен
+                            if (isAdded && context != null) {
+                                MaterialAlertDialogBuilder(requireContext())
+                                    .setTitle("Выберите категорию")
+                                    .setItems(categoryNames.toTypedArray()) { dialog, which ->
+                                        selectedCategory = categoryList[which]
+                                        view?.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.categoryEditText)
+                                            ?.setText(selectedCategory?.name ?: "")
+                                        dialog.dismiss()
+                                    }
+                                    .setNegativeButton("Отмена", null)
+                                    .show()
+                            }
                         }
-                        .setNegativeButton("Отмена", null)
-                        .show()
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                // Можно показать Toast, но только если фрагмент активен
+                if (isAdded && context != null) {
+                    Toast.makeText(
+                        requireContext(),
+                        "Ошибка загрузки категорий",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             }
         }
     }
 
     private fun showAccountDialog() {
-        CoroutineScope(Dispatchers.IO).launch {
-            val database = FinanceDatabase.getDatabase(requireContext())
-            val accountsFlow = database.accountDao().getAllActiveAccounts()
+        // Безопасная проверка контекста (строка 147 была здесь)
+        val safeContext = context ?: return
+        if (!isAdded) return
 
-            accountsFlow.collect { accountList ->
+        currentJob = coroutineScope.launch {
+            try {
+                val database = FinanceDatabase.getDatabase(safeContext)
+                val accountsFlow = database.accountDao().getAllActiveAccounts()
+
                 withContext(Dispatchers.Main) {
-                    val accountNames = accountList.map { it.name }
+                    // Еще раз проверяем, что фрагмент все еще привязан
+                    if (!isAdded || context == null) return@withContext
 
-                    MaterialAlertDialogBuilder(requireContext())
-                        .setTitle("Выберите счет")
-                        .setItems(accountNames.toTypedArray()) { dialog, which ->
-                            selectedAccount = accountList[which]
-                            view?.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.accountEditText)?.setText(selectedAccount.name)
-                            dialog.dismiss()
+                    // Собираем счета в Main потоке
+                    coroutineScope.launch {
+                        accountsFlow.collect { accountList ->
+                            val accountNames = accountList.map { it.name }
+
+                            // Показываем диалог только если фрагмент активен
+                            if (isAdded && context != null) {
+                                MaterialAlertDialogBuilder(requireContext())
+                                    .setTitle("Выберите счет")
+                                    .setItems(accountNames.toTypedArray()) { dialog, which ->
+                                        selectedAccount = accountList[which]
+                                        view?.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.accountEditText)
+                                            ?.setText(selectedAccount?.name ?: "")
+                                        dialog.dismiss()
+                                    }
+                                    .setNegativeButton("Отмена", null)
+                                    .show()
+                            }
                         }
-                        .setNegativeButton("Отмена", null)
-                        .show()
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                // Можно показать Toast, но только если фрагмент активен
+                if (isAdded && context != null) {
+                    Toast.makeText(
+                        requireContext(),
+                        "Ошибка загрузки счетов",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             }
         }
     }
 
     private fun showDatePicker() {
+        val safeContext = context ?: return
+        if (!isAdded) return
+
         val datePicker = DatePickerDialog(
-            requireContext(),
+            safeContext,
             { _, year, month, day ->
                 selectedDate.set(year, month, day)
                 updateDateText()
@@ -174,31 +239,99 @@ class AddTransactionFragment : Fragment() {
 
     private fun updateDateText() {
         val dateFormat = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
-        view?.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.dateEditText)?.setText(dateFormat.format(selectedDate.time))
+        view?.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.dateEditText)
+            ?.setText(dateFormat.format(selectedDate.time))
     }
 
     private fun loadDefaultData() {
-        CoroutineScope(Dispatchers.IO).launch {
-            val database = FinanceDatabase.getDatabase(requireContext())
+        val safeContext = context ?: return
+        if (!isAdded) return
 
-            // Загружаем первую активную категорию
-            val categories = database.categoryDao().getCategoriesByType(transactionType)
-            categories.collect { categoryList ->
-                if (categoryList.isNotEmpty()) {
-                    selectedCategory = categoryList.first()
-                    withContext(Dispatchers.Main) {
-                        view?.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.categoryEditText)?.setText(selectedCategory.name)
+        currentJob = coroutineScope.launch {
+            try {
+                val database = FinanceDatabase.getDatabase(safeContext)
+
+                // Загружаем категории по умолчанию
+                loadCategoriesByType(transactionType)
+
+                // Загружаем счета
+                val accountsFlow = database.accountDao().getAllActiveAccounts()
+
+                coroutineScope.launch {
+                    accountsFlow.collect { accountList ->
+                        if (accountList.isNotEmpty()) {
+                            selectedAccount = accountList.first()
+                            withContext(Dispatchers.Main) {
+                                if (isAdded) {
+                                    view?.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.accountEditText)
+                                        ?.setText(selectedAccount?.name ?: "")
+                                }
+                            }
+                        }
                     }
                 }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
+        }
+    }
 
-            // Загружаем первый активный счет
-            val accountsFlow = database.accountDao().getAllActiveAccounts()
-            accountsFlow.collect { accountList ->
-                if (accountList.isNotEmpty()) {
-                    selectedAccount = accountList.first()
-                    withContext(Dispatchers.Main) {
-                        view?.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.accountEditText)?.setText(selectedAccount.name)
+    private fun loadCategoriesByType(type: String) {
+        val safeContext = context ?: return
+        if (!isAdded) return
+
+        currentJob?.cancel()
+
+        currentJob = coroutineScope.launch {
+            try {
+                val database = FinanceDatabase.getDatabase(safeContext)
+                val categoriesFlow = database.categoryDao().getCategoriesByType(type)
+
+                coroutineScope.launch {
+                    categoriesFlow.collect { categoryList ->
+                        if (categoryList.isNotEmpty()) {
+                            // Автоматически выбираем первую категорию при смене типа
+                            selectedCategory = categoryList.first()
+                            withContext(Dispatchers.Main) {
+                                if (isAdded) {
+                                    view?.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.categoryEditText)
+                                        ?.setText(selectedCategory?.name ?: "")
+
+                                    // Показываем сообщение о смене категории
+                                    Toast.makeText(
+                                        requireContext(),
+                                        "Категория изменена на: ${selectedCategory?.name}",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            }
+                        } else {
+                            // Если нет категорий для выбранного типа
+                            withContext(Dispatchers.Main) {
+                                if (isAdded) {
+                                    selectedCategory = null
+                                    view?.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.categoryEditText)
+                                        ?.setText("")
+
+                                    Toast.makeText(
+                                        requireContext(),
+                                        "Нет категорий для типа: ${if (type == "income") "Доход" else "Расход"}",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                withContext(Dispatchers.Main) {
+                    if (isAdded && context != null) {
+                        Toast.makeText(
+                            requireContext(),
+                            "Ошибка загрузки категорий",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 }
             }
@@ -212,6 +345,9 @@ class AddTransactionFragment : Fragment() {
     }
 
     private fun saveTransaction() {
+        val safeContext = context ?: return
+        if (!isAdded) return
+
         val amountEditText = view?.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.amountEditText)
         val descriptionEditText = view?.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.descriptionEditText)
 
@@ -230,12 +366,14 @@ class AddTransactionFragment : Fragment() {
         }
 
         if (selectedCategory == null) {
-            view?.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.categoryEditText)?.error = "Выберите категорию"
+            view?.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.categoryEditText)
+                ?.error = "Выберите категорию"
             return
         }
 
         if (selectedAccount == null) {
-            view?.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.accountEditText)?.error = "Выберите счет"
+            view?.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.accountEditText)
+                ?.error = "Выберите счет"
             return
         }
 
@@ -249,14 +387,13 @@ class AddTransactionFragment : Fragment() {
             date = selectedDate.time,
             time = Date(),
             isRecurring = false,
-            recurringType = null // Добавляем это поле
+            recurringType = null
         )
 
-        // Сохраняем в базу данных
-        CoroutineScope(Dispatchers.IO).launch {
-            val database = FinanceDatabase.getDatabase(requireContext())
-
+        currentJob = coroutineScope.launch {
             try {
+                val database = FinanceDatabase.getDatabase(safeContext)
+
                 // Вставляем транзакцию
                 val transactionId = database.transactionDao().insert(transaction)
 
@@ -268,23 +405,28 @@ class AddTransactionFragment : Fragment() {
                 }
 
                 withContext(Dispatchers.Main) {
-                    // Показываем сообщение об успехе
-                    Toast.makeText(
-                        requireContext(),
-                        "Транзакция сохранена",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    // Показываем сообщение об успехе только если фрагмент активен
+                    if (isAdded && context != null) {
+                        Toast.makeText(
+                            requireContext(),
+                            "Транзакция сохранена",
+                            Toast.LENGTH_SHORT
+                        ).show()
 
-                    // Возвращаемся на предыдущий экран
-                    parentFragmentManager.popBackStack()
+                        // Возвращаемся на предыдущий экран
+                        requireActivity().supportFragmentManager.popBackStack()
+                    }
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(
-                        requireContext(),
-                        "Ошибка при сохранении: ${e.message}",
-                        Toast.LENGTH_LONG
-                    ).show()
+                    // Показываем ошибку только если фрагмент активен
+                    if (isAdded && context != null) {
+                        Toast.makeText(
+                            requireContext(),
+                            "Ошибка при сохранении: ${e.message}",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
                 }
             }
         }

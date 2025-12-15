@@ -106,7 +106,7 @@ class HomeViewModel(
                 _totalExpense.value = homeData.expenseTotal
                 _balance.value = homeData.balance
 
-                // Преобразуем данные для UI
+                // Преобразуем данные для UI СИНХРОННО
                 val categories = convertToUICategories(homeData.expenseByCategory, homeData.expenseTotal)
                 _expenseCategories.value = categories
 
@@ -119,7 +119,7 @@ class HomeViewModel(
         }
     }
 
-    private fun convertToUICategories(
+    private suspend fun convertToUICategories(
         expenseSummary: List<data.dao.TransactionDao.CategoryExpenseSummary>,
         totalExpense: Double
     ): List<ExpenseCategoryUI> {
@@ -127,58 +127,53 @@ class HomeViewModel(
             return emptyList()
         }
 
-        viewModelScope.launch {
-            try {
-                // Загружаем реальные категории из базы
-                val database = data.database.FinanceDatabase.getDatabase(context)
-                val allCategories = database.categoryDao().getAllCategories()
+        return try {
+            // Загружаем реальные категории из базы СИНХРОННО
+            val database = data.database.FinanceDatabase.getDatabase(context)
+            val allCategories = database.categoryDao().getAllCategories()
 
-                val colors = listOf(
-                    android.graphics.Color.parseColor("#FF6B6B"),
-                    android.graphics.Color.parseColor("#5856D6"),
-                    android.graphics.Color.parseColor("#FFD166"),
-                    android.graphics.Color.parseColor("#06D6A0"),
-                    android.graphics.Color.parseColor("#118AB2"),
-                    android.graphics.Color.parseColor("#9B5DE5")
-                )
+            val colors = listOf(
+                android.graphics.Color.parseColor("#FF6B6B"),
+                android.graphics.Color.parseColor("#5856D6"),
+                android.graphics.Color.parseColor("#FFD166"),
+                android.graphics.Color.parseColor("#06D6A0"),
+                android.graphics.Color.parseColor("#118AB2"),
+                android.graphics.Color.parseColor("#9B5DE5")
+            )
 
-                val result = expenseSummary.mapIndexed { index, summary ->
-                    val category = allCategories.find { it.id == summary.category_id }
-                    val categoryName = category?.name ?: "Категория ${index + 1}"
-                    val categoryColor = if (category != null && category.color.isNotBlank()) {
-                        try {
-                            android.graphics.Color.parseColor(category.color)
-                        } catch (e: Exception) {
-                            colors.getOrElse(index) { android.graphics.Color.GRAY }
-                        }
-                    } else {
+            expenseSummary.mapIndexed { index, summary ->
+                val category = allCategories.find { it.id == summary.category_id }
+                val categoryName = category?.name ?: "Категория ${index + 1}"
+                val categoryColor = if (category != null && category.color.isNotBlank()) {
+                    try {
+                        android.graphics.Color.parseColor(category.color)
+                    } catch (e: Exception) {
                         colors.getOrElse(index) { android.graphics.Color.GRAY }
                     }
-
-                    val percentage = if (totalExpense > 0) {
-                        ((summary.total_amount / totalExpense) * 100).toFloat()
-                    } else {
-                        0f
-                    }
-
-                    ExpenseCategoryUI(
-                        id = summary.category_id ?: 0,
-                        name = categoryName,
-                        amount = summary.total_amount,
-                        percentage = percentage,
-                        color = categoryColor
-                    )
+                } else {
+                    colors.getOrElse(index) { android.graphics.Color.GRAY }
                 }
 
-                _expenseCategories.value = result
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
+                val percentage = if (totalExpense > 0) {
+                    ((summary.total_amount / totalExpense) * 100).toFloat()
+                } else {
+                    0f
+                }
 
-        // Временно возвращаем пустой список, реальные данные придут через Flow
-        return emptyList()
+                ExpenseCategoryUI(
+                    id = summary.category_id ?: 0,
+                    name = categoryName,
+                    amount = summary.total_amount,
+                    percentage = percentage,
+                    color = categoryColor
+                )
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emptyList()
+        }
     }
+
 
     private fun showSampleData() {
         _totalIncome.value = 80000.0
