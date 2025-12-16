@@ -1,36 +1,43 @@
 package com.example.expensesandincomemanager.ui.screens.settings
 
-
 import android.content.Context
+import android.graphics.Color
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import com.example.expensesandincomemanager.R
 import com.google.android.material.card.MaterialCardView
+import data.entities.Category
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import data.repository.FinanceRepository
+import data.provider.FinanceRepositoryProvider
 
 class SettingsFragment : Fragment() {
 
     private lateinit var tvUserName: TextView
     private lateinit var tvUserEmail: TextView
+    private var selectedColor: Int = Color.parseColor("#FF6B6B")
+    private lateinit var repository: FinanceRepository
 
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        val view = inflater.inflate(R.layout.fragment_settings, container, false)
-        return view
+        return inflater.inflate(R.layout.fragment_settings, container, false)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        repository = FinanceRepositoryProvider.getRepository(requireContext())
         setupViews(view)
         setupClickListeners(view)
     }
@@ -44,61 +51,115 @@ class SettingsFragment : Fragment() {
     }
 
     private fun setupClickListeners(view: View) {
-        // Настройка профиля
         view.findViewById<MaterialCardView>(R.id.card_profile).setOnClickListener {
-            // TODO: Перейти на экран редактирования профиля
+            Toast.makeText(requireContext(), "Редактирование профиля", Toast.LENGTH_SHORT).show()
         }
 
-        // Добавить категорию
         view.findViewById<MaterialCardView>(R.id.card_add_category).setOnClickListener {
             showAddCategoryDialog()
         }
 
-        // Сменить валюту
         view.findViewById<MaterialCardView>(R.id.card_change_currency).setOnClickListener {
             showChangeCurrencyDialog()
         }
 
-        // Тема приложения
-        view.findViewById<MaterialCardView>(R.id.card_theme).setOnClickListener {
-            showThemeDialog()
-        }
-
-        // Уведомления
-        view.findViewById<MaterialCardView>(R.id.card_notifications).setOnClickListener {
-            showNotificationsDialog()
-        }
-
-        // Экспорт данных
         view.findViewById<MaterialCardView>(R.id.card_export_data).setOnClickListener {
             exportData()
         }
 
-        // О приложении
-        view.findViewById<MaterialCardView>(R.id.card_about).setOnClickListener {
-            showAboutDialog()
-        }
-
-        // Выйти
         view.findViewById<MaterialCardView>(R.id.card_logout).setOnClickListener {
             showLogoutDialog()
         }
     }
 
     private fun showAddCategoryDialog() {
-        val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.layout_add_category_dialog, null)
+        val dialogView = LayoutInflater.from(requireContext())
+            .inflate(R.layout.layout_add_category_dialog, null)
 
-        val dialog = AlertDialog.Builder(requireContext())
+        // Находим views для выбора цвета
+        val colorViews = listOf(
+            dialogView.findViewById<View>(R.id.color_food),
+            dialogView.findViewById<View>(R.id.color_transport),
+            dialogView.findViewById<View>(R.id.color_entertainment),
+            dialogView.findViewById<View>(R.id.color_cafe),
+            dialogView.findViewById<View>(R.id.color_utilities),
+            dialogView.findViewById<View>(R.id.color_other)
+        )
+
+        var selectedColorView: View? = colorViews[0]
+
+        // Вспомогательная функция для обновления выделения
+        fun updateColorSelection(newSelectedView: View?) {
+            // Снимаем выделение со всех цветов
+            colorViews.forEach { view ->
+                view.background = null
+            }
+
+            // Выделяем новый выбранный цвет
+            newSelectedView?.setBackgroundResource(R.drawable.color_circle_selected)
+            selectedColorView = newSelectedView
+        }
+
+        // Устанавливаем обработчики кликов для выбора цвета
+        colorViews.forEach { colorView ->
+            colorView.setOnClickListener {
+                updateColorSelection(colorView)
+
+                // Получаем цвет из тега
+                val colorTag = colorView.tag as? String
+                colorTag?.let {
+                    selectedColor = Color.parseColor(it)
+                }
+            }
+        }
+
+        // Выделяем цвет по умолчанию
+        updateColorSelection(colorViews[0])
+
+        AlertDialog.Builder(requireContext())
             .setTitle("Добавить категорию")
             .setView(dialogView)
             .setPositiveButton("Добавить") { _, _ ->
-                // TODO: Обработка добавления категории
-                showToast("Категория добавлена")
+                val categoryName = dialogView.findViewById<EditText>(R.id.et_category_name)
+                    .text.toString().trim()
+
+                if (categoryName.isNotEmpty()) {
+                    addNewCategory(categoryName, selectedColor)
+                } else {
+                    Toast.makeText(requireContext(), "Введите название категории", Toast.LENGTH_SHORT).show()
+                }
             }
             .setNegativeButton("Отмена", null)
-            .create()
+            .show()
+    }
 
-        dialog.show()
+    private fun addNewCategory(name: String, color: Int) {
+        lifecycleScope.launch {
+            try {
+                // Создаем новую категорию
+                val newCategory = Category(
+                    name = name,
+                    color = String.format("#%06X", 0xFFFFFF and color),
+                    type = "expense"
+                )
+
+                // Сохраняем в базу данных
+                repository.insertCategory(newCategory)
+
+                Toast.makeText(
+                    requireContext(),
+                    "Категория '$name' добавлена",
+                    Toast.LENGTH_SHORT
+                ).show()
+
+            } catch (e: Exception) {
+                Toast.makeText(
+                    requireContext(),
+                    "Ошибка при добавлении категории: ${e.message}",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
     }
 
     private fun showChangeCurrencyDialog() {
@@ -139,48 +200,7 @@ class SettingsFragment : Fragment() {
     private fun changeCurrency(newCurrency: String) {
         val prefs = requireContext().getSharedPreferences("app_settings", Context.MODE_PRIVATE)
         prefs.edit().putString("currency", newCurrency).apply()
-        showToast("Валюта изменена")
-    }
-
-    private fun showThemeDialog() {
-        val themes = arrayOf("Светлая", "Тёмная", "Системная")
-        var currentThemeIndex = getCurrentThemeIndex()
-
-        AlertDialog.Builder(requireContext())
-            .setTitle("Выберите тему")
-            .setSingleChoiceItems(themes, currentThemeIndex) { _, which ->
-                currentThemeIndex = which
-            }
-            .setPositiveButton("Применить") { dialog, _ ->
-                changeTheme(currentThemeIndex)
-                dialog.dismiss()
-            }
-            .setNegativeButton("Отмена", null)
-            .show()
-    }
-
-    private fun getCurrentThemeIndex(): Int {
-        val prefs = requireContext().getSharedPreferences("app_settings", Context.MODE_PRIVATE)
-        return prefs.getInt("theme", 2) // По умолчанию системная
-    }
-
-    private fun changeTheme(themeIndex: Int) {
-        val prefs = requireContext().getSharedPreferences("app_settings", Context.MODE_PRIVATE)
-        prefs.edit().putInt("theme", themeIndex).apply()
-        showToast("Тема изменена. Перезапустите приложение")
-    }
-
-    private fun showNotificationsDialog() {
-        val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.layout_add_category_dialog, null)
-
-        AlertDialog.Builder(requireContext())
-            .setTitle("Настройка уведомлений")
-            .setView(dialogView)
-            .setPositiveButton("Сохранить") { _, _ ->
-                showToast("Время уведомлений сохранено")
-            }
-            .setNegativeButton("Отмена", null)
-            .show()
+        Toast.makeText(requireContext(), "Валюта изменена", Toast.LENGTH_SHORT).show()
     }
 
     private fun exportData() {
@@ -198,36 +218,23 @@ class SettingsFragment : Fragment() {
     }
 
     private fun exportToCSV() {
-        runBlocking {
-            launch {
-                showToast("Данные экспортированы в CSV")
+        lifecycleScope.launch {
+            try {
+                Toast.makeText(requireContext(), "Данные экспортированы в CSV", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Toast.makeText(requireContext(), "Ошибка экспорта: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
     private fun exportToPDF() {
-        runBlocking {
-            launch {
-                showToast("Данные экспортированы в PDF")
+        lifecycleScope.launch {
+            try {
+                Toast.makeText(requireContext(), "Данные экспортированы в PDF", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Toast.makeText(requireContext(), "Ошибка экспорта: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
-    }
-
-    private fun showAboutDialog() {
-        AlertDialog.Builder(requireContext())
-            .setTitle("О приложении")
-            .setMessage("""
-                Учёт расходов и доходов
-                
-                Версия: 1.0.0
-                Разработчик: Ваша компания
-                
-                Приложение для управления личными финансами.
-                Отслеживайте расходы, планируйте бюджет,
-                достигайте финансовых целей.
-            """.trimIndent())
-            .setPositiveButton("OK", null)
-            .show()
     }
 
     private fun showLogoutDialog() {
@@ -235,19 +242,13 @@ class SettingsFragment : Fragment() {
             .setTitle("Выход")
             .setMessage("Вы уверены, что хотите выйти?")
             .setPositiveButton("Выйти") { _, _ ->
-                logout()
+                closeApp()
             }
             .setNegativeButton("Отмена", null)
             .show()
     }
 
-    private fun logout() {
-        val prefs = requireContext().getSharedPreferences("user_data", Context.MODE_PRIVATE)
-        prefs.edit().clear().apply()
-        showToast("Вы вышли из аккаунта")
-    }
-
-    private fun showToast(message: String) {
-        Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+    private fun closeApp() {
+        activity?.finishAffinity()
     }
 }

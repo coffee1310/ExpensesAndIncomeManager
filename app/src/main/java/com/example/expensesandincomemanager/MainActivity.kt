@@ -6,6 +6,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.example.expensesandincomemanager.ui.screens.home.HomeFragment
 import com.example.expensesandincomemanager.ui.screens.operations.TransactionsFragment
 import com.example.expensesandincomemanager.ui.screens.plan.PlanFragment
+import com.example.expensesandincomemanager.ui.screens.settings.SettingsFragment
 import com.example.expensesandincomemanager.ui.screens.transactions.AddTransactionFragment
 import data.initial.InitialData
 
@@ -49,7 +50,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         findViewById<android.view.View>(R.id.btn_settings)?.setOnClickListener {
-            showComingSoon("Настройки")
+          navigateToSettings()
         }
     }
 
@@ -77,6 +78,13 @@ class MainActivity : AppCompatActivity() {
     private fun navigateToPlan() {
         supportFragmentManager.beginTransaction()
             .replace(R.id.container, PlanFragment())
+            .addToBackStack(null)
+            .commit()
+    }
+
+    private fun navigateToSettings() {
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.container, SettingsFragment())
             .addToBackStack(null)
             .commit()
     }

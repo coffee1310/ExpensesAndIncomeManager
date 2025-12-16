@@ -11,14 +11,16 @@
         android:layout_height="wrap_content"
         android:hint="Название категории"
         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-        app:boxStrokeColor="@color/outline">
+        app:boxStrokeColor="@color/outline"
+        app:hintTextColor="@color/on_surface_variant">
 
         <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/etCategoryName"
+            android:id="@+id/et_category_name"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:maxLines="1"
-            android:textSize="16sp" />
+            android:textSize="16sp"
+            android:textColor="@color/on_surface" />
 
     </com.google.android.material.textfield.TextInputLayout>
 
@@ -32,59 +34,67 @@
         android:layout_marginBottom="8dp" />
 
     <LinearLayout
-        android:id="@+id/colorPicker"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center">
 
         <View
-            android:layout_width="32dp"
-            android:layout_height="32dp"
+            android:id="@+id/color_food"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
             android:background="@color/category_food"
             android:layout_margin="4dp"
-            android:tag="#FF6B6B"
-            android:onClick="onColorSelected" />
+            android:tag="#FF6B6B" />
 
         <View
-            android:layout_width="32dp"
-            android:layout_height="32dp"
+            android:id="@+id/color_transport"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
             android:background="@color/category_transport"
             android:layout_margin="4dp"
-            android:tag="#5856D6"
-            android:onClick="onColorSelected" />
+            android:tag="#5856D6" />
 
         <View
-            android:layout_width="32dp"
-            android:layout_height="32dp"
+            android:id="@+id/color_entertainment"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
             android:background="@color/category_entertainment"
             android:layout_margin="4dp"
-            android:tag="#FFD166"
-            android:onClick="onColorSelected" />
+            android:tag="#FFD166" />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginTop="4dp">
 
         <View
-            android:layout_width="32dp"
-            android:layout_height="32dp"
+            android:id="@+id/color_cafe"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
             android:background="@color/category_cafe"
             android:layout_margin="4dp"
-            android:tag="#06D6A0"
-            android:onClick="onColorSelected" />
+            android:tag="#06D6A0" />
 
         <View
-            android:layout_width="32dp"
-            android:layout_height="32dp"
+            android:id="@+id/color_utilities"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
             android:background="@color/category_utilities"
             android:layout_margin="4dp"
-            android:tag="#118AB2"
-            android:onClick="onColorSelected" />
+            android:tag="#118AB2" />
 
         <View
-            android:layout_width="32dp"
-            android:layout_height="32dp"
+            android:id="@+id/color_other"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
             android:background="@color/category_other"
             android:layout_margin="4dp"
-            android:tag="#9B5DE5"
-            android:onClick="onColorSelected" />
+            android:tag="#9B5DE5" />
 
     </LinearLayout>
 
