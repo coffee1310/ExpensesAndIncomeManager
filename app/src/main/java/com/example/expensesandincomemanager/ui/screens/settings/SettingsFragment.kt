@@ -2,6 +2,8 @@ package com.example.expensesandincomemanager.ui.screens.settings
 
 import android.content.Context
 import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.LayerDrawable
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -25,6 +27,9 @@ class SettingsFragment : Fragment() {
     private lateinit var tvUserEmail: TextView
     private var selectedColor: Int = Color.parseColor("#FF6B6B")
     private lateinit var repository: FinanceRepository
+
+    // Map для хранения исходных цветов фона
+    private val originalBackgrounds = mutableMapOf<View, Int>()
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -86,17 +91,50 @@ class SettingsFragment : Fragment() {
             dialogView.findViewById<View>(R.id.color_other)
         )
 
+        // Сохраняем исходные цвета
+        colorViews.forEach { view ->
+            originalBackgrounds[view] = (view.background as? GradientDrawable)?.color?.defaultColor
+                ?: Color.parseColor(view.tag as String)
+        }
+
         var selectedColorView: View? = colorViews[0]
 
         // Вспомогательная функция для обновления выделения
         fun updateColorSelection(newSelectedView: View?) {
             // Снимаем выделение со всех цветов
             colorViews.forEach { view ->
-                view.background = null
+                // Восстанавливаем исходный цвет фона
+                val originalColor = originalBackgrounds[view] ?: Color.parseColor(view.tag as String)
+                val shape = GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
+                    setColor(originalColor)
+                }
+                view.background = shape
             }
 
             // Выделяем новый выбранный цвет
-            newSelectedView?.setBackgroundResource(R.drawable.color_circle_selected)
+            newSelectedView?.let { selectedView ->
+                val originalColor = originalBackgrounds[selectedView] ?: Color.parseColor(selectedView.tag as String)
+
+                // Создаем LayerDrawable: цветной круг + рамка
+                val colorCircle = GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
+                    setColor(originalColor)
+                }
+
+                val borderCircle = GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
+                    setStroke(4, requireContext().getColor(R.color.primary))
+                    setColor(Color.TRANSPARENT)
+                }
+
+                val layers = arrayOf(colorCircle, borderCircle)
+                val layerDrawable = LayerDrawable(layers)
+                layerDrawable.setLayerInset(1, 4, 4, 4, 4) // Отступ для рамки
+
+                selectedView.background = layerDrawable
+            }
+
             selectedColorView = newSelectedView
         }
 
