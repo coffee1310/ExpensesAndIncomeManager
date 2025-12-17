@@ -40,7 +40,8 @@
                 android:layout_height="wrap_content"
                 android:hint="Название цели"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                app:boxStrokeColor="@color/outline"
+                app:boxStrokeColor="@drawable/text_input_stroke_selector"
+                app:hintTextColor="@color/on_surface_variant"
                 app:errorEnabled="true"
                 android:layout_marginBottom="16dp">
 
@@ -61,9 +62,11 @@
                 android:layout_height="wrap_content"
                 android:hint="Целевая сумма (₽)"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                app:boxStrokeColor="@color/outline"
+                app:boxStrokeColor="@drawable/text_input_stroke_selector"
+                app:hintTextColor="@color/on_surface_variant"
                 app:errorEnabled="true"
                 app:prefixText="₽"
+                app:prefixTextColor="@color/on_surface"
                 android:layout_marginBottom="16dp">
 
                 <com.google.android.material.textfield.TextInputEditText
@@ -84,9 +87,11 @@
                 android:layout_height="wrap_content"
                 android:hint="Текущая сумма (₽)"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                app:boxStrokeColor="@color/outline"
+                app:boxStrokeColor="@drawable/text_input_stroke_selector"
+                app:hintTextColor="@color/on_surface_variant"
                 app:errorEnabled="true"
                 app:prefixText="₽"
+                app:prefixTextColor="@color/on_surface"
                 android:layout_marginBottom="16dp">
 
                 <com.google.android.material.textfield.TextInputEditText
@@ -108,7 +113,8 @@
                 android:layout_height="wrap_content"
                 android:hint="Дата цели (необязательно)"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                app:boxStrokeColor="@color/outline"
+                app:boxStrokeColor="@drawable/text_input_stroke_selector"
+                app:hintTextColor="@color/on_surface_variant"
                 android:layout_marginBottom="16dp">
 
                 <com.google.android.material.textfield.TextInputEditText
@@ -129,7 +135,8 @@
                 android:layout_height="wrap_content"
                 android:hint="Описание (необязательно)"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                app:boxStrokeColor="@color/outline"
+                app:boxStrokeColor="@drawable/text_input_stroke_selector"
+                app:hintTextColor="@color/on_surface_variant"
                 android:layout_marginBottom="24dp">
 
                 <com.google.android.material.textfield.TextInputEditText
@@ -172,14 +179,18 @@
 
             </LinearLayout>
 
-            <!-- Прогресс-бар -->
-            <androidx.cardview.widget.CardView
+            <!-- Прогресс-бар с фиолетовой обводкой при наведении -->
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 app:cardCornerRadius="12dp"
-                app:cardElevation="2dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@drawable/card_stroke_selector"
+                app:strokeWidth="1dp"
+                app:cardBackgroundColor="@color/card_background"
                 android:layout_marginBottom="24dp"
-                android:backgroundTint="@color/card_background">
+                android:clickable="false"
+                android:focusable="false">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -234,7 +245,7 @@
 
                 </LinearLayout>
 
-            </androidx.cardview.widget.CardView>
+            </com.google.android.material.card.MaterialCardView>
 
         </LinearLayout>
 

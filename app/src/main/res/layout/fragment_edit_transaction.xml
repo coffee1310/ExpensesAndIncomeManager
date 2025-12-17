@@ -57,10 +57,10 @@
                     android:layout_weight="1"
                     app:cardBackgroundColor="@color/surface"
                     app:cardCornerRadius="12dp"
+                    app:strokeColor="@drawable/card_stroke_selector"
+                    app:strokeWidth="1dp"
                     android:clickable="true"
-                    android:focusable="true"
-                    app:strokeColor="@color/outline"
-                    app:strokeWidth="1dp">
+                    android:focusable="true">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -97,10 +97,10 @@
                     android:layout_weight="1"
                     app:cardBackgroundColor="@color/surface"
                     app:cardCornerRadius="12dp"
+                    app:strokeColor="@drawable/card_stroke_selector"
+                    app:strokeWidth="1dp"
                     android:clickable="true"
-                    android:focusable="true"
-                    app:strokeColor="@color/outline"
-                    app:strokeWidth="1dp">
+                    android:focusable="true">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -134,7 +134,7 @@
                 android:layout_height="wrap_content"
                 android:hint="Сумма"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                app:boxStrokeColor="@color/outline"
+                app:boxStrokeColor="@drawable/text_input_stroke_selector"
                 android:layout_marginBottom="16dp">
 
                 <com.google.android.material.textfield.TextInputEditText
@@ -154,7 +154,7 @@
                 android:layout_height="wrap_content"
                 android:hint="Категория"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                app:boxStrokeColor="@color/outline"
+                app:boxStrokeColor="@drawable/text_input_stroke_selector"
                 android:layout_marginBottom="16dp">
 
                 <com.google.android.material.textfield.TextInputEditText
@@ -175,7 +175,7 @@
                 android:layout_height="wrap_content"
                 android:hint="Счет"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                app:boxStrokeColor="@color/outline"
+                app:boxStrokeColor="@drawable/text_input_stroke_selector"
                 android:layout_marginBottom="16dp">
 
                 <com.google.android.material.textfield.TextInputEditText
@@ -196,7 +196,7 @@
                 android:layout_height="wrap_content"
                 android:hint="Дата"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                app:boxStrokeColor="@color/outline"
+                app:boxStrokeColor="@drawable/text_input_stroke_selector"
                 android:layout_marginBottom="16dp">
 
                 <com.google.android.material.textfield.TextInputEditText
@@ -217,7 +217,7 @@
                 android:layout_height="wrap_content"
                 android:hint="Время"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                app:boxStrokeColor="@color/outline"
+                app:boxStrokeColor="@drawable/text_input_stroke_selector"
                 android:layout_marginBottom="16dp">
 
                 <com.google.android.material.textfield.TextInputEditText
@@ -238,7 +238,7 @@
                 android:layout_height="wrap_content"
                 android:hint="Описание (необязательно)"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                app:boxStrokeColor="@color/outline"
+                app:boxStrokeColor="@drawable/text_input_stroke_selector"
                 android:layout_marginBottom="24dp">
 
                 <com.google.android.material.textfield.TextInputEditText
