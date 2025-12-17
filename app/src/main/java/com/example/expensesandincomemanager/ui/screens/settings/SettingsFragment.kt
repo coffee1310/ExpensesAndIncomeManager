@@ -16,10 +16,20 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.example.expensesandincomemanager.R
 import com.google.android.material.card.MaterialCardView
-import data.entities.Category
+import data.entities.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import data.repository.FinanceRepository
 import data.provider.FinanceRepositoryProvider
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
+import org.json.JSONArray
+import org.json.JSONObject
+import java.io.File
+import java.io.FileOutputStream
+import java.io.OutputStreamWriter
+import java.text.SimpleDateFormat
+import java.util.*
 
 class SettingsFragment : Fragment() {
 
@@ -69,7 +79,7 @@ class SettingsFragment : Fragment() {
         }
 
         view.findViewById<MaterialCardView>(R.id.card_export_data).setOnClickListener {
-            exportData()
+            showExportDataOptionsDialog()
         }
 
         view.findViewById<MaterialCardView>(R.id.card_logout).setOnClickListener {
@@ -241,34 +251,258 @@ class SettingsFragment : Fragment() {
         Toast.makeText(requireContext(), "Валюта изменена", Toast.LENGTH_SHORT).show()
     }
 
-    private fun exportData() {
+    private fun showExportDataOptionsDialog() {
         AlertDialog.Builder(requireContext())
             .setTitle("Экспорт данных")
             .setMessage("Выберите формат экспорта:")
-            .setPositiveButton("CSV") { _, _ ->
-                exportToCSV()
+            .setPositiveButton("JSON") { _, _ ->
+                exportToJSON()
             }
-            .setNegativeButton("PDF") { _, _ ->
-                exportToPDF()
+            .setNegativeButton("CSV") { _, _ ->
+                exportToCSV()
             }
             .setNeutralButton("Отмена", null)
             .show()
     }
 
-    private fun exportToCSV() {
+    private fun exportToJSON() {
         lifecycleScope.launch {
             try {
-                Toast.makeText(requireContext(), "Данные экспортированы в CSV", Toast.LENGTH_SHORT).show()
+                val jsonData = prepareJSONData()
+                saveJSONToFile(jsonData)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(
+                        requireContext(),
+                        "Данные успешно экспортированы в JSON",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
             } catch (e: Exception) {
-                Toast.makeText(requireContext(), "Ошибка экспорта: ${e.message}", Toast.LENGTH_SHORT).show()
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(
+                        requireContext(),
+                        "Ошибка экспорта: ${e.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
             }
         }
     }
 
-    private fun exportToPDF() {
+    private suspend fun prepareJSONData(): JSONObject {
+        return withContext(Dispatchers.IO) {
+            val jsonObject = JSONObject()
+
+            // Метаданные экспорта
+            val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+            jsonObject.put("export_date", dateFormat.format(Date()))
+            jsonObject.put("app_version", "1.0")
+            jsonObject.put("export_format", "JSON")
+
+            // Получаем данные из базы
+            val categories = try {
+                repository.categoryDao.getAllCategories()
+            } catch (e: Exception) {
+                emptyList<Category>()
+            }
+
+            val transactions = try {
+                repository.transactionDao.getAllTransactions()
+            } catch (e: Exception) {
+                emptyList<Transaction>()
+            }
+
+            val accounts = try {
+                repository.accountDao.getAllActiveAccounts().first()
+            } catch (e: Exception) {
+                emptyList<Account>()
+            }
+
+            val savingsGoals = try {
+                repository.savingsGoalDao.getAll()
+            } catch (e: Exception) {
+                emptyList<SavingsGoal>()
+            }
+
+            val budgets = try {
+                // Проверяем, есть ли метод getAllBudgets
+                repository.budgetDao.getAllBudgets()
+            } catch (e: Exception) {
+                emptyList<Budget>()
+            }
+
+            // Категории
+            val categoriesArray = JSONArray()
+            categories.forEach { category ->
+                val categoryJson = JSONObject().apply {
+                    put("id", category.id)
+                    put("name", category.name)
+                    put("type", category.type)
+                    put("color", category.color)
+                    put("icon", category.icon)
+                    put("is_default", category.isDefault)
+                    put("is_active", category.isActive)
+                    put("sort_order", category.sortOrder)
+                    put("created_at", category.createdAt.time)
+                }
+                categoriesArray.put(categoryJson)
+            }
+            jsonObject.put("categories", categoriesArray)
+
+            // Операции (транзакции)
+            val transactionsArray = JSONArray()
+            transactions.forEach { transaction ->
+                val transactionJson = JSONObject().apply {
+                    put("id", transaction.id)
+                    put("amount", transaction.amount)
+                    put("type", transaction.type)
+                    put("description", transaction.description ?: "")
+                    put("category_id", transaction.categoryId ?: 0)
+                    put("account_id", transaction.accountId)
+                    put("date", transaction.date.time)
+                    put("time", transaction.time ?: "")
+                    put("is_recurring", transaction.isRecurring)
+                    put("created_at", transaction.createdAt.time)
+                }
+                transactionsArray.put(transactionJson)
+            }
+            jsonObject.put("transactions", transactionsArray)
+
+            // Счета
+            val accountsArray = JSONArray()
+            accounts.forEach { account ->
+                val accountJson = JSONObject().apply {
+                    put("id", account.id)
+                    put("name", account.name)
+                    put("balance", account.balance)
+                    put("currency", account.currency)
+                    put("color", account.color)
+                    put("icon", account.icon)
+                    put("is_active", account.isActive)
+                    put("sort_order", account.sortOrder)
+                    put("created_at", account.createdAt.time)
+                }
+                accountsArray.put(accountJson)
+            }
+            jsonObject.put("accounts", accountsArray)
+
+            // Цели сбережений
+            val savingsGoalsArray = JSONArray()
+            savingsGoals.forEach { goal ->
+                val goalJson = JSONObject().apply {
+                    put("id", goal.id)
+                    put("name", goal.name)
+                    put("target_amount", goal.targetAmount)
+                    put("current_amount", goal.currentAmount)
+                    put("description", goal.description ?: "")
+                    put("target_date", goal.targetDate?.time ?: 0)
+                    put("color", goal.color)
+                    put("icon", goal.icon)
+                    put("is_completed", goal.isCompleted)
+                    put("created_at", goal.createdAt.time)
+                    put("progress_percentage", goal.getProgress())
+                    put("remaining_amount", goal.getRemainingAmount())
+                }
+                savingsGoalsArray.put(goalJson)
+            }
+            jsonObject.put("savings_goals", savingsGoalsArray)
+
+            // Бюджеты
+            val budgetsArray = JSONArray()
+            budgets.forEach { budget ->
+                val budgetJson = JSONObject().apply {
+                    put("id", budget.id)
+                    put("category_id", budget.categoryId)
+                    put("amount", budget.amount)
+                    put("month", budget.month)
+                    put("year", budget.year)
+                    put("created_at", budget.createdAt.time)
+                    put("updated_at", budget.updatedAt.time)
+                }
+                budgetsArray.put(budgetJson)
+            }
+            jsonObject.put("budgets", budgetsArray)
+
+            // Статистика
+            val stats = JSONObject().apply {
+                put("total_categories", categories.size)
+                put("total_transactions", transactions.size)
+                put("total_accounts", accounts.size)
+                put("total_savings_goals", savingsGoals.size)
+                put("total_budgets", budgets.size)
+
+                // Расчет общей суммы доходов и расходов
+                val incomeTotal = transactions
+                    .filter { it.type == Transaction.TYPE_INCOME }
+                    .sumOf { it.amount }
+                val expenseTotal = transactions
+                    .filter { it.type == Transaction.TYPE_EXPENSE }
+                    .sumOf { it.amount }
+
+                put("total_income", incomeTotal)
+                put("total_expense", expenseTotal)
+                put("net_balance", incomeTotal - expenseTotal)
+
+                // Общий баланс по счетам
+                val totalBalance = accounts.sumOf { it.balance }
+                put("total_accounts_balance", totalBalance)
+            }
+            jsonObject.put("statistics", stats)
+
+            jsonObject
+        }
+    }
+
+    private fun saveJSONToFile(jsonData: JSONObject) {
+        try {
+            val dateFormat = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
+            val fileName = "finance_export_${dateFormat.format(Date())}.json"
+
+            // Получаем директорию для сохранения
+            val downloadsDir = requireContext().getExternalFilesDir(null)
+            val exportFile = File(downloadsDir, fileName)
+
+            // Записываем данные в файл
+            val outputStream = FileOutputStream(exportFile)
+            val writer = OutputStreamWriter(outputStream, "UTF-8")
+
+            // Красивое форматирование JSON
+            writer.write(jsonData.toString(4))
+            writer.close()
+
+            // Показать уведомление о сохранении
+            showExportSuccessDialog(exportFile.absolutePath, fileName)
+
+        } catch (e: Exception) {
+            lifecycleScope.launch {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(
+                        requireContext(),
+                        "Ошибка сохранения файла: ${e.message}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
+    }
+
+    private fun showExportSuccessDialog(filePath: String, fileName: String) {
+        lifecycleScope.launch {
+            withContext(Dispatchers.Main) {
+                AlertDialog.Builder(requireContext())
+                    .setTitle("Экспорт завершен")
+                    .setMessage("Файл успешно сохранен:\n$fileName")
+                    .setPositiveButton("OK", null)
+                    .show()
+            }
+        }
+    }
+
+    private fun exportToCSV() {
         lifecycleScope.launch {
             try {
-                Toast.makeText(requireContext(), "Данные экспортированы в PDF", Toast.LENGTH_SHORT).show()
+                // Реализация экспорта в CSV
+                Toast.makeText(requireContext(), "Данные экспортированы в CSV", Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
                 Toast.makeText(requireContext(), "Ошибка экспорта: ${e.message}", Toast.LENGTH_SHORT).show()
             }

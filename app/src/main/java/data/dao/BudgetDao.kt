@@ -170,6 +170,9 @@ interface BudgetDao {
     """)
     fun getBudgetStatistics(year: Int): Flow<List<BudgetStatistics>>
 
+    @Query("SELECT * FROM budgets ORDER BY year DESC, month DESC")
+    suspend fun getAllBudgets(): List<Budget>
+
     // Обновление даты изменения
     @Query("UPDATE budgets SET updated_at = :date WHERE id = :id")
     suspend fun updateTimestamp(id: Int, date: Date)

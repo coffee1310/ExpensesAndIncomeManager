@@ -9,11 +9,11 @@ import kotlinx.coroutines.flow.first
 import java.util.*
 
 class FinanceRepository(
-    private val categoryDao: CategoryDao,
-    private val transactionDao: TransactionDao,
-    private val accountDao: AccountDao,
-    private val budgetDao: BudgetDao,
-    private val savingsGoalDao: SavingsGoalDao
+    val categoryDao: CategoryDao,
+    val transactionDao: TransactionDao,
+    val accountDao: AccountDao,
+    val budgetDao: BudgetDao,
+    val savingsGoalDao: SavingsGoalDao
 ) {
 
     // CoroutineScope для обновлений LiveData
@@ -39,6 +39,13 @@ class FinanceRepository(
     // Категории
     suspend fun insertCategory(category: Category) = categoryDao.insert(category)
     fun getCategoriesByType(type: String) = categoryDao.getCategoriesByType(type)
+
+    // Получить все категории
+    suspend fun getAllCategories(): List<Category> {
+        return withContext(Dispatchers.IO) {
+            categoryDao.getAllCategories()
+        }
+    }
 
     // Транзакции
     suspend fun insertTransaction(transaction: Transaction): Long {
@@ -71,6 +78,13 @@ class FinanceRepository(
 
     fun getIncomeExpenseTotal(startDate: Date, endDate: Date) =
         transactionDao.getIncomeExpenseTotal(startDate, endDate)
+
+    // Получить все транзакции
+    suspend fun getAllTransactions(): List<Transaction> {
+        return withContext(Dispatchers.IO) {
+            transactionDao.getAllTransactions()
+        }
+    }
 
     // Получение данных для главного экрана
     suspend fun getHomeData(year: Int, month: Int): HomeData {
@@ -114,6 +128,13 @@ class FinanceRepository(
         notifyTransactionsUpdated() // Уведомляем об изменении
     }
 
+    // Получить счета из Flow и преобразовать в List
+    suspend fun getAccountsFromFlow(): List<Account> {
+        return withContext(Dispatchers.IO) {
+            accountDao.getAllActiveAccounts().first()
+        }
+    }
+
     // Добавляем метод для принудительного обновления
     fun forceRefresh() {
         notifyTransactionsUpdated()
@@ -146,10 +167,17 @@ class FinanceRepository(
     }
 
     suspend fun getAllSavingsGoals(): List<SavingsGoal> {
-        return savingsGoalDao.getAll()  // Используйте getAll(), а не getGoals()
+        return savingsGoalDao.getAll()
     }
 
     suspend fun getSavingsGoalById(id: Int): SavingsGoal? {
-        return savingsGoalDao.getById(id)  // Используйте getById(), а не getGoalById()
+        return savingsGoalDao.getById(id)
+    }
+
+    // Бюджеты
+    suspend fun getAllBudgets(): List<Budget> {
+        return withContext(Dispatchers.IO) {
+            budgetDao.getAllBudgets()
+        }
     }
 }
