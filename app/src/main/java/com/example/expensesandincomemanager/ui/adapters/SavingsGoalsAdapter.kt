@@ -33,11 +33,16 @@ class SavingsGoalsAdapter(
         private val tvGoalName: TextView = itemView.findViewById(R.id.tvGoalName)
         private val tvTargetAmount: TextView = itemView.findViewById(R.id.tvTargetAmount)
         private val tvCurrentAmount: TextView = itemView.findViewById(R.id.tvCurrentAmount)
-        private val tvProgressText: TextView = itemView.findViewById(R.id.tvProgressText)
+        private val tvProgressText: TextView = itemView.findViewById(R.id.tvProgressPercent)
         private val progressBar: ProgressBar = itemView.findViewById(R.id.progressBar)
-        private val btnEdit: MaterialButton = itemView.findViewById(R.id.btnEdit)
+        private val btnEdit: MaterialButton = itemView.findViewById(R.id.btnEdit) // Было btnAddMoney
         private val btnDelete: MaterialButton = itemView.findViewById(R.id.btnDelete)
-        private val btnAddMoney: MaterialButton = itemView.findViewById(R.id.btnAddMoney)
+
+        // Новые поля
+        private val tvGoalStatus: TextView = itemView.findViewById(R.id.tvGoalStatus)
+        private val tvRemainingText: TextView = itemView.findViewById(R.id.tvRemainingText)
+        private val tvTargetDate: TextView = itemView.findViewById(R.id.tvTargetDate)
+        private val actionButtons: ViewGroup? = itemView.findViewById(R.id.actionButtons)
 
         init {
             btnEdit.setOnClickListener {
@@ -54,11 +59,18 @@ class SavingsGoalsAdapter(
                 }
             }
 
-            btnAddMoney.setOnClickListener {
+            // Клик по всей карточке вызывает добавление денег
+            itemView.setOnClickListener {
                 val position = adapterPosition
                 if (position != RecyclerView.NO_POSITION) {
                     onAddMoneyClick(getItem(position))
                 }
+            }
+
+            // Долгое нажатие показывает кнопки действий
+            itemView.setOnLongClickListener {
+                actionButtons?.visibility = View.VISIBLE
+                true
             }
         }
 
@@ -69,15 +81,39 @@ class SavingsGoalsAdapter(
 
             // Расчет прогресса
             val progress = if (goal.targetAmount > 0) {
-                ((goal.currentAmount / goal.targetAmount) * 100).toInt()
+                ((goal.currentAmount / goal.targetAmount) * 100).toInt().coerceIn(0, 100)
             } else {
                 0
             }
             progressBar.progress = progress
             tvProgressText.text = "$progress%"
 
-            // Кнопка добавления денег
-            btnAddMoney.isEnabled = !goal.isCompleted && progress < 100
+            // Оставшаяся сумма
+            val remaining = goal.targetAmount - goal.currentAmount
+            tvRemainingText.text = if (remaining >= 0) {
+                "Осталось: ${String.format("%,.0f ₽", remaining)}"
+            } else {
+                "Превышено на: ${String.format("%,.0f ₽", -remaining)}"
+            }
+
+            // Статус цели
+            val statusText = when {
+                goal.isCompleted || progress >= 100 -> "Выполнено"
+                progress >= 75 -> "Почти готово"
+                else -> "В процессе"
+            }
+            tvGoalStatus.text = statusText
+
+            // Дата цели
+            goal.targetDate?.let { date ->
+                val dateFormat = java.text.SimpleDateFormat("dd.MM.yyyy", java.util.Locale.getDefault())
+                tvTargetDate.text = dateFormat.format(date)
+            } ?: run {
+                tvTargetDate.text = "Без срока"
+            }
+
+            // Скрываем кнопки действий по умолчанию
+            actionButtons?.visibility = View.GONE
         }
     }
 }
