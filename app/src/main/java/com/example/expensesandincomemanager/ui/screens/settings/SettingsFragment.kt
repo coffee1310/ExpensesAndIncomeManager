@@ -1,6 +1,5 @@
 package com.example.expensesandincomemanager.ui.screens.settings
 
-import android.content.Context
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.LayerDrawable
@@ -9,7 +8,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
-import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
@@ -33,8 +31,6 @@ import java.util.*
 
 class SettingsFragment : Fragment() {
 
-    private lateinit var tvUserName: TextView
-    private lateinit var tvUserEmail: TextView
     private var selectedColor: Int = Color.parseColor("#FF6B6B")
     private lateinit var repository: FinanceRepository
 
@@ -53,33 +49,16 @@ class SettingsFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         repository = FinanceRepositoryProvider.getRepository(requireContext())
-        setupViews(view)
         setupClickListeners(view)
     }
 
-    private fun setupViews(view: View) {
-        tvUserName = view.findViewById(R.id.tv_user_name)
-        tvUserEmail = view.findViewById(R.id.tv_user_email)
-
-        tvUserName.text = "Алексей"
-        tvUserEmail.text = "user@example.com"
-    }
-
     private fun setupClickListeners(view: View) {
-        view.findViewById<MaterialCardView>(R.id.card_profile).setOnClickListener {
-            Toast.makeText(requireContext(), "Редактирование профиля", Toast.LENGTH_SHORT).show()
-        }
-
         view.findViewById<MaterialCardView>(R.id.card_add_category).setOnClickListener {
             showAddCategoryDialog()
         }
 
-        view.findViewById<MaterialCardView>(R.id.card_change_currency).setOnClickListener {
-            showChangeCurrencyDialog()
-        }
-
         view.findViewById<MaterialCardView>(R.id.card_export_data).setOnClickListener {
-            showExportDataOptionsDialog()
+            showExportDataDialog()
         }
 
         view.findViewById<MaterialCardView>(R.id.card_logout).setOnClickListener {
@@ -210,58 +189,14 @@ class SettingsFragment : Fragment() {
         }
     }
 
-    private fun showChangeCurrencyDialog() {
-        val currencies = arrayOf(
-            "Российский рубль (₽)",
-            "Доллар США ($)",
-            "Евро (€)",
-            "Тенге (₸)",
-            "Белорусский рубль (Br)",
-            "Гривна (₴)"
-        )
-
-        val currencyCodes = arrayOf("RUB", "USD", "EUR", "KZT", "BYN", "UAH")
-        val currentCurrency = getCurrentCurrency()
-        var selectedIndex = currencyCodes.indexOf(currentCurrency)
-        if (selectedIndex == -1) selectedIndex = 0
-
-        AlertDialog.Builder(requireContext())
-            .setTitle("Выберите валюту")
-            .setSingleChoiceItems(currencies, selectedIndex) { _, which ->
-                selectedIndex = which
-            }
-            .setPositiveButton("Сохранить") { dialog, _ ->
-                if (selectedIndex != -1) {
-                    changeCurrency(currencyCodes[selectedIndex])
-                }
-                dialog.dismiss()
-            }
-            .setNegativeButton("Отмена", null)
-            .show()
-    }
-
-    private fun getCurrentCurrency(): String {
-        val prefs = requireContext().getSharedPreferences("app_settings", Context.MODE_PRIVATE)
-        return prefs.getString("currency", "RUB") ?: "RUB"
-    }
-
-    private fun changeCurrency(newCurrency: String) {
-        val prefs = requireContext().getSharedPreferences("app_settings", Context.MODE_PRIVATE)
-        prefs.edit().putString("currency", newCurrency).apply()
-        Toast.makeText(requireContext(), "Валюта изменена", Toast.LENGTH_SHORT).show()
-    }
-
-    private fun showExportDataOptionsDialog() {
+    private fun showExportDataDialog() {
         AlertDialog.Builder(requireContext())
             .setTitle("Экспорт данных")
-            .setMessage("Выберите формат экспорта:")
-            .setPositiveButton("JSON") { _, _ ->
+            .setMessage("Экспортировать все данные в формате JSON?")
+            .setPositiveButton("Экспорт") { _, _ ->
                 exportToJSON()
             }
-            .setNegativeButton("CSV") { _, _ ->
-                exportToCSV()
-            }
-            .setNeutralButton("Отмена", null)
+            .setNegativeButton("Отмена", null)
             .show()
     }
 
@@ -494,17 +429,6 @@ class SettingsFragment : Fragment() {
                     .setMessage("Файл успешно сохранен:\n$fileName")
                     .setPositiveButton("OK", null)
                     .show()
-            }
-        }
-    }
-
-    private fun exportToCSV() {
-        lifecycleScope.launch {
-            try {
-                // Реализация экспорта в CSV
-                Toast.makeText(requireContext(), "Данные экспортированы в CSV", Toast.LENGTH_SHORT).show()
-            } catch (e: Exception) {
-                Toast.makeText(requireContext(), "Ошибка экспорта: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
     }
