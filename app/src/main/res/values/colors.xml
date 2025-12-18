@@ -48,4 +48,9 @@
         <item name="boxStrokeColor">@color/outline</item>
         <item name="errorTextColor">@color/error</item>
     </style>
+
+    <color name="nav_icon_active">@color/primary</color>
+    <color name="nav_icon_inactive">@color/nav_icon_default</color>
+    <color name="nav_text_active">@color/primary</color>
+    <color name="nav_text_inactive">@color/nav_text_default</color>
 </resources>

@@ -76,15 +76,24 @@ class HomeViewModel(
         val months = mutableListOf<MonthData>()
         val monthFormat = SimpleDateFormat("MMM", Locale.getDefault())
 
-        // Генерируем данные за последние 6 месяцев
-        for (i in 5 downTo 0) {
-            calendar.add(Calendar.MONTH, -1)
-            val month = calendar.get(Calendar.MONTH) + 1
-            val year = calendar.get(Calendar.YEAR)
+        // Начинаем с текущего месяца
+        calendar.set(Calendar.DAY_OF_MONTH, 1) // Устанавливаем на 1 число для корректного форматирования
+
+        // Генерируем данные за последние 6 месяцев, включая текущий
+        for (i in 0 until 6) {
+            // Создаем копию календаря для каждого месяца
+            val monthCalendar = calendar.clone() as Calendar
+
+            // Отступаем назад на i месяцев
+            monthCalendar.add(Calendar.MONTH, -i)
+
+            val month = monthCalendar.get(Calendar.MONTH) + 1
+            val year = monthCalendar.get(Calendar.YEAR)
+            val monthName = monthFormat.format(monthCalendar.time).replaceFirstChar { it.uppercase() }
 
             months.add(
                 MonthData(
-                    monthName = monthFormat.format(calendar.time).replaceFirstChar { it.uppercase() },
+                    monthName = monthName,
                     monthNumber = month,
                     year = year,
                     isSelected = month == currentMonth && year == currentYear
@@ -92,7 +101,9 @@ class HomeViewModel(
             )
         }
 
-        months.reverse()
+        // Сортируем по дате (от старых к новым)
+        months.sortWith(compareBy({ it.year }, { it.monthNumber }))
+
         _monthlyData.value = months
     }
 

@@ -3,6 +3,8 @@ package com.example.expensesandincomemanager
 import android.os.Bundle
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.Fragment
 import com.example.expensesandincomemanager.ui.screens.home.HomeFragment
 import com.example.expensesandincomemanager.ui.screens.operations.TransactionsFragment
 import com.example.expensesandincomemanager.ui.screens.plan.PlanFragment
@@ -14,6 +16,8 @@ class MainActivity : AppCompatActivity() {
 
     val TAG = "MainActivity"
 
+    private var currentTab: String = "home"
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -23,84 +27,146 @@ class MainActivity : AppCompatActivity() {
         InitialData.insertInitialData(this)
 
         if (savedInstanceState == null) {
-            // Загружаем HomeFragment как начальный экран
-            supportFragmentManager.beginTransaction()
-                .replace(R.id.container, HomeFragment())
-                .commit()
+            navigateToHome()
         }
     }
 
     private fun setupNavigation() {
+        // Находим контейнер нижней навигации
+        val bottomNavigation = findViewById<android.view.ViewGroup>(R.id.bottom_navigation)
+
         // Навигация через нижнее меню
-        findViewById<android.view.View>(R.id.btn_transactions)?.setOnClickListener {
+        bottomNavigation.findViewById<android.view.View>(R.id.btn_transactions)?.setOnClickListener {
             navigateToTransactions()
         }
 
-        findViewById<android.view.View>(R.id.btn_report)?.setOnClickListener {
+        bottomNavigation.findViewById<android.view.View>(R.id.btn_report)?.setOnClickListener {
             navigateToHome()
         }
 
         // Фиолетовая кнопка + для добавления транзакции
-        findViewById<com.google.android.material.floatingactionbutton.FloatingActionButton>(R.id.fab_add)?.setOnClickListener {
+        bottomNavigation.findViewById<com.google.android.material.floatingactionbutton.FloatingActionButton>(R.id.fab_add)?.setOnClickListener {
             navigateToAddTransaction()
         }
 
-        findViewById<android.view.View>(R.id.btn_plan)?.setOnClickListener {
+        bottomNavigation.findViewById<android.view.View>(R.id.btn_plan)?.setOnClickListener {
             navigateToPlan()
         }
 
-        findViewById<android.view.View>(R.id.btn_settings)?.setOnClickListener {
-          navigateToSettings()
+        bottomNavigation.findViewById<android.view.View>(R.id.btn_settings)?.setOnClickListener {
+            navigateToSettings()
         }
     }
 
     private fun navigateToHome() {
-        supportFragmentManager.beginTransaction()
-            .replace(R.id.container, HomeFragment())
-            .addToBackStack(null)
-            .commit()
+        setActiveTab("home")
+        replaceFragment(HomeFragment(), "home")
     }
 
     private fun navigateToTransactions() {
-        supportFragmentManager.beginTransaction()
-            .replace(R.id.container, TransactionsFragment())
-            .addToBackStack(null)
-            .commit()
+        setActiveTab("transactions")
+        replaceFragment(TransactionsFragment(), "transactions")
     }
 
     private fun navigateToAddTransaction() {
+        // При открытии формы добавления транзакции сбрасываем выделение вкладки
+        setActiveTab(null)
         supportFragmentManager.beginTransaction()
             .replace(R.id.container, AddTransactionFragment())
-            .addToBackStack(null)
+            .addToBackStack("add_transaction")
             .commit()
     }
 
     private fun navigateToPlan() {
-        supportFragmentManager.beginTransaction()
-            .replace(R.id.container, PlanFragment())
-            .addToBackStack(null)
-            .commit()
+        setActiveTab("plan")
+        replaceFragment(PlanFragment(), "plan")
     }
 
     private fun navigateToSettings() {
+        setActiveTab("settings")
+        replaceFragment(SettingsFragment(), "settings")
+    }
+
+    private fun replaceFragment(fragment: Fragment, tag: String) {
         supportFragmentManager.beginTransaction()
-            .replace(R.id.container, SettingsFragment())
-            .addToBackStack(null)
+            .replace(R.id.container, fragment)
+            .addToBackStack(tag)
             .commit()
+    }
+
+    private fun setActiveTab(tab: String?) {
+        currentTab = tab ?: ""
+
+        // Находим контейнер нижней навигации
+        val bottomNavigation = findViewById<android.view.ViewGroup>(R.id.bottom_navigation)
+
+        // Функция для установки состояния вкладки
+        fun setTabState(containerId: Int, isActive: Boolean) {
+            val container = bottomNavigation.findViewById<android.view.ViewGroup>(containerId)
+            for (i in 0 until container.childCount) {
+                val child = container.getChildAt(i)
+                when (child) {
+                    is android.widget.ImageView -> {
+                        child.setColorFilter(ContextCompat.getColor(this,
+                            if (isActive) R.color.nav_icon_active else R.color.nav_icon_inactive))
+                    }
+                    is android.widget.TextView -> {
+                        child.setTextColor(ContextCompat.getColor(this,
+                            if (isActive) R.color.nav_text_active else R.color.nav_text_inactive))
+                    }
+                }
+            }
+        }
+
+        // Сбрасываем все вкладки в неактивное состояние
+        setTabState(R.id.btn_transactions, false)
+        setTabState(R.id.btn_report, false)
+        setTabState(R.id.btn_plan, false)
+        setTabState(R.id.btn_settings, false)
+
+        // Устанавливаем активную вкладку
+        when (tab) {
+            "home" -> setTabState(R.id.btn_report, true)
+            "transactions" -> setTabState(R.id.btn_transactions, true)
+            "plan" -> setTabState(R.id.btn_plan, true)
+            "settings" -> setTabState(R.id.btn_settings, true)
+        }
+    }
+
+    override fun onBackPressed() {
+        // Получаем текущий фрагмент
+        val currentFragment = supportFragmentManager.findFragmentById(R.id.container)
+
+        // Проверяем, является ли текущий фрагмент одним из основных
+        when (currentFragment) {
+            is HomeFragment -> currentTab = "home"
+            is TransactionsFragment -> currentTab = "transactions"
+            is PlanFragment -> currentTab = "plan"
+            is SettingsFragment -> currentTab = "settings"
+            else -> currentTab = ""
+        }
+
+        // Обновляем выделение вкладки
+        setActiveTab(currentTab)
+
+        // Если в стеке есть фрагменты, используем стандартное поведение
+        if (supportFragmentManager.backStackEntryCount > 0) {
+            super.onBackPressed()
+        } else {
+            // Если стек пуст, выходим из приложения
+            finish()
+        }
     }
 
     override fun onResume() {
         super.onResume()
-        // При возвращении в приложение обновляем данные
+        // При возвращении в приложение обновляем выделение вкладки
+        if (currentTab.isNotEmpty()) {
+            setActiveTab(currentTab)
+        }
+
+        // Обновляем данные в HomeFragment
         val homeFragment = supportFragmentManager.findFragmentById(R.id.container) as? HomeFragment
         homeFragment?.onResume()
-    }
-
-    private fun showComingSoon(featureName: String) {
-        android.widget.Toast.makeText(
-            this,
-            "$featureName - в разработке",
-            android.widget.Toast.LENGTH_SHORT
-        ).show()
     }
 }

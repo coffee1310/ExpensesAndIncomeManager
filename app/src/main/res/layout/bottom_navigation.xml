@@ -78,7 +78,6 @@
             app:backgroundTint="@color/primary"
             app:tint="@android:color/white"
             app:elevation="8dp"
-            app:fabSize="mini"
             android:layout_gravity="center"
             android:translationY="-16dp" />
 
